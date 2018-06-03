@@ -1,0 +1,81 @@
+.=torg + 1000
+
+main:			mov pc, sp			;Move stack pointer to the line after main
+				tst -(sp)			;Move stack pointer to the line where main is
+				clr NumMoves		;Clear the destination
+				mov #70, -(sp)		;Initialize the counter for squares (we won't need the last row of the board)
+				cmp #1, Player		;Check if the player is 1 (white)
+				bne BSet			;If player is not white, initialize the conditions for black player in BSet
+				mov #-2, -(sp)		;Initialize the step between squares. If the player is 1, we'll move from higher to lower addresses
+				mov #-20, -(sp)		;Initialize the step between rows. If the player is 1, we'll check the row above for possible moves
+				mov #5176, -(sp)	;Initialize the start of the board. If player is 1, we'll move from the bottom of the table to the top
+				br Loop				;Start the iteration
+
+BSet: 			mov #2, -(sp)		;Initialize the step between squares. If the player is 2, we'll move from lower to higher addresses
+				mov #20, -(sp)		;Initialize the step between rows. If the player is 2, we'll check the row below for possible moves
+				mov #5000, -(sp)	;Initialize the start of the board. If player is 2, we'll move from the top of the table to the bottom
+
+;(sp) start of the board, 2(sp) step between rows, 4(sp) step between squares, 6(sp) number of squares to check
+
+Loop:			cmp @(sp), Player	;Check if the square contains the player's token
+				beq ToRight 		;If it does, check the square of the next row to the right of this square
+DecSquare:		sub #1, 6(sp)		;Otherwise subtract one from the counter of squares
+				add 4(sp), (sp)		;Move to the next square of the board
+				tst 6(sp)			;Check if we have reached the last square we need to check
+				bne Loop			;Return to the top of the loop if there are more squares to check
+				add #10, sp 		;Clean the stack
+				halt
+
+ToRight:		mov (sp), -(sp)		;Create a copy of the address of the player's token
+				mov #2, -(sp)		;Create a variable with the offset for the right diagonal (=2)
+				br Check1			;Check if the token can move to the right
+ToLeft:			mov 4(sp), 2(sp)	;Set the current address variable to the address of the player's token
+				mov #-2, (sp)		;Change the offset to -2 to check the left diagonal
+				br Check1			;Check if the token can move to the left
+
+;(sp) diagonal offset, 2(sp) a copy of the token address, 4(sp) the token address, 6(sp) step between rows, 
+;10(sp) step between squares, 12(sp) number of squares to check
+
+Check1:			mov #1, -(sp)		;Create a variable signifying that we are checking the *first* row after the player's token
+				br IsEmpty			;Check if the corresponding square is empty
+Check2:			cmp #10, 12(sp)		;Check if we are in the last row before one and there are less than 10 squares left to check
+				blt Continue		;If there are enough rows left, proceed to check the row which is two rows removed from the token
+				br RiOrLeft			;Check if there is one diagonal still to consider
+Continue:		add 6(sp), 2(sp)	;Adjust the row we will be checking
+				add (sp), 2(sp)		;Adjust the address of the square we will be checking
+				mov #2, -(sp)		;Change the relative row counter
+
+;(sp) relative row address, 2(sp) diagonal offset, 4(sp) a copy of address on board, 6(sp) token address, 
+;10(sp) step between rows, 12(sp) step between squares
+
+IsEmpty:		mov 4(sp), -(sp)	;Copy the address in stack
+				bic #177760, (sp)	;Prepare to check the correctness of the address
+				tst 4(sp)			;Check which diagonal is under consideration
+				blt NegStep			;If offset is -2, check the left border
+				cmp (sp)+, #16		;Otherwise check if the address ends in 16, 36, 56, 76
+				beq NewStep			;Return if address is unavailable
+				br CheckVal			;Otherwise check the contents of the square
+NegStep:		cmp (sp)+, #0		;Check if the address ends in 20, 40, 60, 00
+				beq NewStep			;Return if address is incorrect
+
+CheckVal:		mov 4(sp), -(sp)	;Create another copy of the address
+				add 12(sp), (sp)	;Add row step to the copy of the address
+				add 4(sp), (sp)		;Add diagonal step to the copy of the address
+				tst @(sp)			;Compare the contents of the target square with zero
+				bne WhereTo 		;If it wasn't zero, choose where to go next
+
+AddPoint:		add #1, NumMoves	;If it was zero, add 1 to the result
+				add #2, sp 			;Adjust the stack
+
+NewStep:		add #2, sp			;Adjust the stack
+RiOrLeft:		tst (sp)			;Check which diagonal is under consideration
+				bgt ToLeft 			;If it was the right diagonal, check the left diagonal
+				add #4, sp 			;Otherwise adjust the stack
+				br DecSquare		;If it was the left diagonal, go to the next square of the board
+
+WhereTo:		cmp @(sp)+, Player 	;Check if the square contains the player's token
+				beq NewStep			;If it does, check another diagonal or proceed to the next square
+				cmp (sp), #2		;Check if we are already two rows removed from the player's token
+				beq NewStep			;If yes, check another diagonal or proceed to the next square
+				tst (sp)+			;Otherwise adjust the stack pointer
+				br Check2			;Check the row above this
