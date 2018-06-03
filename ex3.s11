@@ -1,0 +1,138 @@
+
+.=torg+1000
+
+main :		mov pc, sp
+			tst -(sp)
+			;mov #122, r4 				;for test purposes only
+			mov r4, -(sp)
+			clr r4
+			mov #Board, -(sp)
+			mov Player, -(sp)
+			jsr pc, calcWP
+			add #4, sp
+			mov (sp)+, r4
+			halt
+
+;calcWP
+calcWP :	mov #0, -(sp)
+			sub #2, 6(sp)
+calcLoop :	add #2, 6(sp)
+			inc (sp)
+			cmp (sp), #100
+			bgt calcEnd
+			cmp @6(sp), #0
+			beq calcLoop
+			cmp @6(sp), 4(sp)
+			beq calcInc
+calcDec :	dec r4
+			br calcLoop
+calcInc	:	inc r4	
+			br calcLoop
+calcEnd :	tst (sp)+
+			rts pc
+
+
+;checkWin
+checkWin :	mov #0, -(sp)
+			sub #2, 6(sp)
+			cmp 4(sp), #2
+			beq setToOne
+			mov #2, 4(sp)
+			br winLoop
+setToOne : 	mov #1, 4(sp)
+winLoop :	add #2, 6(sp)
+			inc (sp)
+			;check count
+			cmp @6(sp), 4(sp)
+			beq anyMoves
+			;if 1 is returned, return -1
+			;otherwise continue
+			br winLoop
+
+
+;noTokens :
+
+;pass to it the current address (by value), the player (by value) and the board (by address)
+;returns the result in the address cell
+anyMoves :	mov 8(sp), -(sp)	;current relative address
+			mov 8(sp), -(sp)	;player
+			mov 8(sp), (-sp)	;board
+			jsr pc, canMoveR	;return resulting address if successful, otherwise -1
+			cmp #-1, 4(sp)
+			bne return1
+			jsr pc, canMoveL	;return resulting address if successful, otherwise -1
+			cmp #-1, 4(sp)
+			bne return1
+			br return-1
+
+return1	:	mov #1, 4(sp)	;check address
+			rts pc
+return-1 :	mov #-1, 4(sp)	;check address
+			rts pc
+
+;output will be in 8(sp)
+;address is in 6(sp)
+;player is in 4(sp)
+;board is in 2(sp)
+	
+;tests if the player is close to the edge of the board
+testEdge :	mov 8(sp), -(sp)
+			bic #17707, (sp)
+			cmp 6(sp), #1	;check if player is 1
+			bne blaEdge
+whiEdge :	cmp (sp), #0
+			beq edge-1
+			br edge1
+blaEdge :	cmp (sp), #7
+			beq edge-1 
+edge1 :		mov #1, 4(sp)	;check place
+			rts pc	
+
+
+canMoveR :	jsr testEdge
+			cmp 4(sp), #1 ;check place
+			bne cmrRet-1
+			riEdge :	tst (sp)+
+			mov 8(sp), -(sp) 
+			bic #17770, (sp)
+			cmp (sp), #7
+			beq cmrRet-1
+			mov @8(sp), -(sp)	;board address
+			mov 6(sp), -(sp)	;player
+
+cmrRet-1 :	mov #-1, 4(sp)
+			rts pc
+
+
+
+cmrEmpty :	;checks that it is inside the board
+cmrRet-1 :	mov #-1, 4(sp)	;check address
+			rts pc
+
+canMoveL :
+cmlAddr :
+cmlEmpty :
+
+canEatR :
+cerAddr:
+cerEmpty:
+
+canEatL :
+cerAddr:
+cerEmpty :
+
+
+
+
+.=torg+11000
+
+Board:		.word	0,	2,	0,	0,	0,	0,	0,	0
+			.word	1,	0,	1,	0,	0,	0,	2,	0
+			.word	0,	2,	0,	1,	0,	1,	0,	1
+			.word	1,	0,	1,	0,	1,	0,	2,	0
+			.word	0,	2,	0,	1,	0,	1,	0,	1
+			.word	1,	0,	1,	0,	1,	0,	2,	0
+			.word	0,	2,	0,	2,	0,	2,	0,	1
+			.word	1,	0,	1,	0,	1,	0,	1,	0
+									
+Player:		.word	1
