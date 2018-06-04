@@ -1,0 +1,62 @@
+;"movPiece" function
+;first parameter[2(sp) - at the start of subroutine] - adress of the board
+;second parameter - source point(inline)
+;third parameter - destination point(inline)
+
+.=torg+1000
+main:				mov pc,sp						;for test purposes
+					tst -(sp)
+					mov #Board,-(sp)
+					jsr r5,movPiece
+					.word 35.
+					.word 21.
+					halt
+
+movPiece:			mov (r5)+,-(sp)					;fetching second parameter
+					mov (r5)+,-(sp)					;fetching third parameter
+					mov (sp),-(sp)					;creating stack variable for calculating diagonal midpoint
+					add 4(sp),(sp)					;adding source and destination indexes
+					asr (sp)						;dividing sum of source and destination idexes by two
+					bcc capMov 						;if number is divisible by two - checking capture(or reverse capture) move
+nCapMov:			tst (sp)+						;if number is no divisible by two - checking simple move, getting rid of calculated sum
+					asl (sp)						;multiplying by two destination index
+					asl 2(sp)						;multiplying by two source index
+					add 6(sp),(sp)					;adding adress of the "Board" to the destination index(multiplied)
+					add 6(sp),2(sp)					;adding adress of the "Board" to the source index(multiplied)
+					mov @2(sp),@(sp)				;moving source content to the destination
+					mov #0,@2(sp)					;clearing the source
+return:				tst (sp)+						;clearing the stack
+					tst (sp)+						;clearing the stack
+					mov (sp),2(sp)					;moving subroutine return-adress to the place of the first parameter
+					tst (sp)+						;clearing the stack
+					rts r5							;returning from the subroutine using connection register(r5)
+capMov:				asl 2(sp)						;multiplying by two destination index
+					asl 4(sp)						;multiplying by two source index
+					asl (sp)						;multiplying by two midpoint index
+					add 10(sp),2(sp)				;adding adress of the "Board" to the destination index(multiplied)				
+					add 10(sp),4(sp)				;adding adress of the "Board" to the source index(multiplied)
+					add 10(sp),(sp)					;adding adress of the "Board" to the midpoint index(multiplied)
+					mov @4(sp),@2(sp)				;moving source content to the destination
+					mov #0,@4(sp)					;clearing the source
+					cmp #0,@(sp)					;checking if midpoint contains any checker
+					bne eat 						;if it does - branching to the "eat", if doesn't - proceeding with "revEat"(reverse eat)
+revEat:				cmp #1,@2(sp)					;checking if checker that moved was white
+					beq bRevEat						;if yes, that branching to the "bRevEat"(reverse eating of the black checker), if no - "wRevEat"
+wRevEat:			mov #1,@(sp)					;moving white checker to the midpoint
+					tst (sp)+						;clearing stack variable which has contained adress of the midpoint
+					jmp return						;jumping to the return from the subroutine procedure									
+bRevEat:			mov #2,@(sp)					;moving black checker to the midpoint
+					tst (sp)+						;clearing stack variable which has contained adress of the midpoint
+					jmp return 						;jumping to the return from the subroutine procedure
+eat:				mov #0,@(sp) 					;clearing midpoint
+					tst (sp)+						;clearing stack variable which has contained adress of the midpoint
+					jmp return 						;jsumping to the return from the subroutine procedure	
+
+Board:				.word 0,0,0,0,0,0,0,0			;for test purposes
+					.word 0,0,0,0,0,0,0,0
+					.word 0,0,0,0,0,0,0,0
+					.word 0,0,0,0,2,0,0,0
+					.word 0,0,0,1,0,0,0,0
+					.word 0,0,0,0,0,0,0,0
+					.word 0,0,0,0,0,0,0,0
+					.word 0,0,0,0,0,0,0,0
