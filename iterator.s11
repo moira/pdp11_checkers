@@ -1,0 +1,72 @@
+
+.=torg+1000
+
+main :		mov pc, sp 					;just a test
+			tst -(sp)					;adjust the sp
+			mov #122, r4 				;for test purposes only
+			mov r4, -(sp)				;put smth in r0 to check that it comes back afterwards
+			clr r4						;clear r4 to be able to use it later
+			mov #Board, -(sp) 			;pass board in stack
+			mov Player, -(sp) 			;pass Player in stack
+			jsr pc, calcWP  			;go to calcWP
+			add #4, sp 					;adjust the stack
+			mov (sp)+, r4				;return to r4 its value
+			halt						;finish the test
+
+;4(sp) is board, 2(sp) is player
+
+calcWP :	mov #0, -(sp)		;create a field for the iterator's output
+			mov 6(sp), -(sp)	;copy board to pass it to the iterator
+			mov 6(sp), -(sp)	;copy player to pass it to the iterator
+			mov #addOne, -(sp)	;pass this function to the iterator
+			jsr pc, iterator 	;go to the iterator with all that stuff
+			mov 6(sp), r4		;put the returned number into the register
+			mov #0, 6(sp)		;set the output field to 0 again
+			cmp 2(sp), #1		;change the player that is passed to the iterator (next 4 lines too)
+			beq setToTwo		
+			mov #1, 2(sp)
+			br calcOpp			
+setToTwo :	mov #2, 2(sp)		
+calcOpp:	jsr pc, iterator	;run the iterator with the opponent as player
+			sub @6(sp), r4		;subtract the result from r4
+			add #10, sp 		;adjust the stack
+			rts pc 				;return to main
+
+
+;iterator
+;receives board, player, function address
+;if you meet Player's piece on the board, do something with it
+;receives: output field 10(sp), board 6(sp), player 4(sp), function 2(sp)
+
+iterator :	mov #177777, -(sp)		;creates an iterator to count steps
+			mov 10(sp), -(sp)		;creates a copy of the board address
+			sub #2, (sp)			;sets the current address to the word just before the board for convenient iteration		
+iterLoop :	add #2, (sp)			;increments the address in order for it to point to the next square
+			inc 2(sp)				;increments the number of the square (from 0 to 77)
+			cmp 2(sp), #7			;checks if there are any squares left
+			beq iterEnd				;if there are none, ends iteration					
+			cmp @(sp), 10(sp)		;does the square contain the token of the player that was passed to the iterator?
+			bne iterLoop			;if it doesn't, just continue to iterate over squares
+iterCall :	jsr pc, @6(sp) 			;goes to the passed function
+			br iterLoop				;after you return from the called function, continue
+iterEnd :	add #4, sp				;deletes the count of steps and the copy of the board
+			rts pc 					;returns to the calling function
+
+
+;increments the output -- a simple example of a function that can be passed to the iterator as a pointer
+addOne :	inc 16(sp)
+			rts pc
+
+
+.=torg+11000
+
+Board:		.word	0,	2,	0,	1,	0,	1,	0,	0
+			.word	1,	0,	1,	0,	0,	0,	2,	0
+			.word	0,	2,	0,	1,	0,	1,	0,	1
+			.word	1,	0,	1,	0,	1,	0,	2,	0
+			.word	0,	2,	0,	1,	0,	1,	0,	1
+			.word	1,	0,	1,	0,	1,	0,	2,	0
+			.word	0,	2,	0,	2,	0,	2,	0,	1
+			.word	1,	0,	1,	0,	1,	0,	1,	0
+									
+Player:		.word	2
