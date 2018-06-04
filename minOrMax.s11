@@ -1,0 +1,25 @@
+;"minOrMax" function
+;first parameter[4(sp)] - current player
+;second parameter[2(sp)] - player we are checking for
+
+.=torg+1000
+main:			mov pc,sp					;for test purposes
+				tst -(sp)
+				mov #2,-(sp)
+				mov #Player,-(sp)
+				jsr pc,minOrMax
+				halt
+
+minOrMax:		mov @2(sp),-(sp)			;fetching second parameter
+				cmp (sp),6(sp)				;comparing player's colors
+				beq max 					;if colors are equal - returning "1"(means max)
+min:			mov #-1,r4					;in case they are different - returning "-1"(means min)
+				jmp return 					;after assigning right value to the r4 going to clear stack and return from subroutine
+max:			mov #1,r4  					;assigning "1"(means max) to the r4
+				jmp return 					;going to clear the stack and return from subroutine
+return:			mov 2(sp),6(sp)				;assining return adress of the subroutine to the stack adress of the first parameter
+				tst (sp)+					;clearing the stack
+				tst (sp)+					;clearing the stack
+				tst (sp)+					;clearing the stack
+				rts pc						;returning from the subroutine
+Player:			.word 2						;for test purposes
