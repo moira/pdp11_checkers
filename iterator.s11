@@ -33,8 +33,25 @@ calcOpp:	jsr pc, iterator	;run the iterator with the opponent as player
 			rts pc 				;return to main
 
 
+;checkWin
+;check if the opponent has any pieces
+;check if the player or the opponent can move
+;receives
+;returns
+checkWin :	mov addOne, (sp) ;or rather move there a function checking 
+			;create output field
+			;change player to opponent
+			jsr pc, iterator
+			;check what was returned
+			tst 4(sp)
+			beq chwTrue
+findMove :	;put here the appropriate function anyMoves
+			jsr pc, iterator
+chwTrue :	;adjust stack
+			;return true
+			rts pc
+
 ;iterator
-;receives board, player, function address
 ;if you meet Player's piece on the board, do something with it
 ;receives: output field 10(sp), board 6(sp), player 4(sp), function 2(sp)
 
@@ -43,18 +60,90 @@ iterator :	mov #177777, -(sp)		;creates an iterator to count steps
 			sub #2, (sp)			;sets the current address to the word just before the board for convenient iteration		
 iterLoop :	add #2, (sp)			;increments the address in order for it to point to the next square
 			inc 2(sp)				;increments the number of the square (from 0 to 77)
-			cmp 2(sp), #7			;checks if there are any squares left
+			cmp 2(sp), #7			;checks if there are any squares left ;should be 77, this is a test version
 			beq iterEnd				;if there are none, ends iteration					
 			cmp @(sp), 10(sp)		;does the square contain the token of the player that was passed to the iterator?
 			bne iterLoop			;if it doesn't, just continue to iterate over squares
 iterCall :	jsr pc, @6(sp) 			;goes to the passed function
+									;check condition
 			br iterLoop				;after you return from the called function, continue
 iterEnd :	add #4, sp				;deletes the count of steps and the copy of the board
 			rts pc 					;returns to the calling function
 
+;passes to the pointed function: address on board 2(sp), squareID 4(sp), player 12(sp), output field 16(sp)
 
 ;increments the output -- a simple example of a function that can be passed to the iterator as a pointer
 addOne :	inc 16(sp)
+			rts pc
+
+;ID, board, player
+canMoveR :	mov #0, -(sp)		;first vs second check counter (just move vs eat)
+cmrRecur :	add #1, (sp)
+			mov 14(sp), -(sp)	;copy player
+			mov 6(sp), -(sp)	;copy square ID
+			jsr testEdge
+			tst (sp)+
+			cmp (sp)+, #1 		;check border
+			bne cmrRet-1		;border check failed => return -1
+riEdge :	mov 6(sp), -(sp) 	;check right edge
+			bic #177770, (sp)
+			cmp (sp)+, #7
+			beq cmrRet-1
+			cmp 12(sp), #1
+			beq movWhite
+			mov #10, -(sp)		;put row step in the stack
+			br isEmpty
+movWhite :	mov #-10, -(sp)
+isEmpty : 	mov 4(sp), -(sp)	
+			add (sp), @2(sp)*2
+			add (sp), #2
+			;check emptiness of a cell in question
+			;count the address we need to check (based on player : (+10 or -10) + 1)
+			;mov @8(sp), -(sp)	;board address
+			;mov 6(sp), -(sp)	;player
+			cmp @(sp), #0		
+			beq retMove
+			cmp @(sp), 4(sp)	;player
+			beq cmrRet-1
+			cmp 6(sp), #2		;iteration counter
+			beq cmrRet-1
+			;change squareID
+			cmp 4(sp), #1
+			beq toBlack
+			mov #1, 4(sp)
+			br tryToEat
+toBlack :	mov #2, 4(sp)
+tryToEat :	jsr cmrRecur
+cmrRet-1 :	tst (sp)+
+			mov #177777, 16(sp)
+			rts pc
+retMove :	;place the current point into the stack
+			;adjust stack -- deletes iteration counter, player copy
+			mov 22(sp), 6(sp)		;ID before move
+			add 22(sp), 10(sp)	;step
+			add 22(sp), #1		;right step
+			;adjust stack
+			rts pc
+
+;copy for left check
+
+;passed are player ID 4(sp) and square ID 2(sp)
+;returns result in 4(sp)
+;tests if the player is close to the edge of the board
+testEdge :	mov 4(sp), -(sp)
+			bic #177707, (sp)
+			cmp 6(sp), #1	;check if player is 1
+			bne blaEdge
+whiEdge :	cmp (sp), #0
+			beq edge-1
+			br edge1
+blaEdge :	cmp (sp), #7
+			beq edge-1 
+edge1 :		mov #1, 6(sp)
+			tst (sp)+
+			rts pc
+edge-1 :	mov #177777, 6(sp)
+			tst (sp)+
 			rts pc
 
 
