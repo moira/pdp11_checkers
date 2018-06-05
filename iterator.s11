@@ -1,17 +1,50 @@
-
 .=torg+1000
 
 main :		mov pc, sp 					;just a test
 			tst -(sp)					;adjust the sp
-			mov #122, r4 				;for test purposes only
 			mov r4, -(sp)				;put smth in r0 to check that it comes back afterwards
 			clr r4						;clear r4 to be able to use it later
-			mov #Board, -(sp) 			;pass board in stack
-			mov Player, -(sp) 			;pass Player in stack
-			jsr pc, calcWP  			;go to calcWP
-			add #4, sp 					;adjust the stack
+			mov #Source, -(sp)
+			mov #Dest, -(sp)
+			mov #WinParam, -(sp)
+			jrs pc, getMaxWP 
+			add #6, sp
 			mov (sp)+, r4				;return to r4 its value
-			halt						;finish the test
+			halt
+
+;WinParam 2(sp), Dest 4(sp), Source 6(sp)
+getMaxWP :	mov #Board, -(sp)
+			mov #Player, -(sp)
+			mov #Steps, -(sp)
+			mov 14(sp), -(sp)	;source
+			mov 14(sp), -(sp)	;dest
+			mov 14(sp), -(sp)	;winParam
+			jsr pc, miniMax
+			add #14, sp
+			rts sp
+
+;winParam 2(sp), dest 4(sp), source 6(sp), steps 10(sp), player 12(sp), board 14(sp)
+miniMax :	mov #0, -(sp)
+			mov 16(sp), -(sp)	;board address
+			mov @16(sp), -(sp)	;current player
+			jrs checkWin
+			add #4, sp
+			cmp #1, (sp)+
+			mov #20, @2(sp)
+			
+
+
+;main :		mov pc, sp 					;just a test
+;			tst -(sp)					;adjust the sp
+;			mov #122, r4 				;for test purposes only
+;			mov r4, -(sp)				;put smth in r0 to check that it comes back afterwards
+;			clr r4						;clear r4 to be able to use it later
+;			mov #Board, -(sp) 			;pass board in stack
+;			mov Player, -(sp) 			;pass Player in stack
+;			jsr pc, calcWP  			;go to calcWP
+;			add #4, sp 					;adjust the stack
+;			mov (sp)+, r4				;return to r4 its value
+;			halt						;finish the test
 
 ;4(sp) is board, 2(sp) is player
 
@@ -38,17 +71,22 @@ calcOpp:	jsr pc, iterator	;run the iterator with the opponent as player
 ;check if the player or the opponent can move
 ;receives
 ;returns
-checkWin :	mov addOne, (sp) ;or rather move there a function checking 
-			;create output field
+checkWin :	mov anyPiece, -(sp)
+			;sets output field to -1
 			;change player to opponent
 			jsr pc, iterator
 			;check what was returned
 			tst 4(sp)
 			beq chwTrue
-findMove :	;put here the appropriate function anyMoves
+findMove :	mov anyMoves, -(sp)
 			jsr pc, iterator
-chwTrue :	;adjust stack
-			;return true
+			;change player, call iterator with the new player
+			;if the first returned moves, return -1
+			;otherwise check the second one, if it returned that there are no moves,
+			;check count WP
+chwEnd :	;adjust stack
+			;return the result
+			;moves the result where it should be
 			rts pc
 
 ;iterator
@@ -61,11 +99,12 @@ iterator :	mov #177777, -(sp)		;creates an iterator to count steps
 iterLoop :	add #2, (sp)			;increments the address in order for it to point to the next square
 			inc 2(sp)				;increments the number of the square (from 0 to 77)
 			cmp 2(sp), #7			;checks if there are any squares left ;should be 77, this is a test version
-			beq iterEnd				;if there are none, ends iteration					
+			bge iterEnd				;if there are none, ends iteration					
 			cmp @(sp), 10(sp)		;does the square contain the token of the player that was passed to the iterator?
 			bne iterLoop			;if it doesn't, just continue to iterate over squares
-iterCall :	jsr pc, @6(sp) 			;goes to the passed function
-									;check condition
+iterCall :	;check function type
+			;pass
+			jsr pc, @6(sp) 			;goes to the passed function
 			br iterLoop				;after you return from the called function, continue
 iterEnd :	add #4, sp				;deletes the count of steps and the copy of the board
 			rts pc 					;returns to the calling function
@@ -75,6 +114,26 @@ iterEnd :	add #4, sp				;deletes the count of steps and the copy of the board
 ;increments the output -- a simple example of a function that can be passed to the iterator as a pointer
 addOne :	inc 16(sp)
 			rts pc
+
+;makes iterator stop if there are any pieces on the board
+anyPiece :	mov #77, 6(sp)
+			mov #-1, 16(sp)
+			rts pc
+
+anyMove :	;if canMoveR != -1, return 1, set counter to 77
+			;if canMoveL != -1, return 1, set counter to 77
+
+
+canMove :	;checks if a piece can move r
+			;if it can, call movePiece
+			;call minimax
+			;decrement step (in stack)
+			;receive source and dest and WP from minimax
+			;compare with global WP
+			;if is bigger, replace it (sorce and dest as well)
+			;then check if it can move left and do the same
+
+
 
 ;ID, board, player
 canMoveR :	mov #0, -(sp)		;first vs second check counter (just move vs eat)
