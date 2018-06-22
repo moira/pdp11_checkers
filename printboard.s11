@@ -1,0 +1,117 @@
+tps = 177564
+tpb = 177566
+.=torg+1000
+
+;universal printing function (print) and printing the board (printB) as an example of its usage
+
+;;SETTING THE ENVIRONMENT TO USE THE PRINTER
+main:		mov pc, sp
+			tst -(sp)
+			mov #printc, @#20	;iot trap initialization
+			mov #200, @#22
+			mov #printc, @#64	;printer interrupt init
+			mov #200, @#66
+			mov #100, @#tps		;IE enable
+;;SETTING THE ENVIRONMENT TO USE THE PRINTER;;
+
+;;BOARD PRINTING FUNCTION;;
+printB:		mov #80., len1
+			jsr pc, boardToS
+			jsr pc, print
+			halt
+
+;;END OF THE BOARD PRINTING FUNCTION;;
+
+;;PRINTER;;
+
+print:		mov #buf1, -(sp)
+			mov len1, -(sp)		;NB without "#" when using a label!
+			jsr pc, printbuf
+			add #4, sp			;stack restore
+w_loop:		tstb @#tps
+			bpl w_loop
+			rts pc
+
+printbuf:	tst busy
+			bgt printbuf
+			mov #1, busy
+			mov 4(sp), pointer
+			mov 2(sp), count
+			iot
+			rts pc
+
+printc:		tst count
+			ble sof
+			movb @pointer, @#tpb
+			inc pointer
+			dec count
+			rti
+
+sof:		clr busy
+			rti
+
+;;printer global variables
+
+len1:	.word 0
+buf1:	.blkw 100.			;the length of the board, we can increment the size of the buffer if we need to print something longer
+pointer: .blkw 1
+count: .word 0
+busy: .word 0
+
+;;end of printer global variables
+
+;;END OF PRINTER;;
+
+;;CONVERTING THE BOARD INTO STRING;;
+
+boardToS:	mov #buf1, -(sp)		;move the address of the buffer to stack
+			sub #1, (sp)
+			mov #-1, -(sp)			;ititialize the counter
+			mov #Board, -(sp)		;move the board address to the stack
+			sub #2, (sp)
+BTSLoop:	inc 2(sp)
+			mov 2(sp), -(sp)
+			cmp #0, 4(sp)
+			beq contBTS
+			cmp #100, 4(sp)			;check if the end of the board was reached
+			beq stopBTS				;if it is so, exit from the function
+			bic #177770, (sp)
+			cmp (sp), #0
+			bne contBTS
+addNL:		incb 6(sp)
+			movb #13., @6(sp)
+			incb 6(sp)
+			movb #10., @6(sp)
+contBTS:	tst (sp)+
+			add #2, (sp)			;otherwise increment the address on the board
+			incb 4(sp)				;increment the address in the buffer
+			;inc 2(sp)				;increment the counter
+			cmp @(sp), #0			;check if the word of the board is 0	
+			beq strUnder			;if it is so, append underscore to the string
+			cmp @(sp), #1			;check if the current word on the board is 1
+			beq strWhite			;if it is so, append W to the sting
+strBlack:	movb #102, @4(sp) 		;append B
+			br BTSLoop
+strWhite:	movb #127, @4(sp)		;append W
+			br BTSLoop
+strUnder:	movb #137, @4(sp)		;append underscore
+			br BTSLoop
+stopBTS:	incb 6(sp)
+			movb #13., @6(sp)
+			incb 6(sp)
+			movb #10., @6(sp)
+			add #10, sp 			;adjust the stack
+			rts pc
+
+;;END OF THE BOARD CONVERSION;;
+
+.=torg+11000
+
+Board: 	.word 1, 2, 0, 0, 0, 0, 0, 0
+		.word 0, 0, 0, 0, 0, 0, 0, 0
+		.word 0, 0, 0, 0, 0, 0, 0, 2
+		.word 0, 0, 0, 0, 0, 0, 0, 0
+		.word 1, 0, 0, 0, 0, 0, 0, 1
+		.word 0, 0, 0, 0, 0, 0, 0, 0
+		.word 0, 0, 0, 0, 0, 0, 0, 0
+		.word 0, 0, 0, 0, 0, 0, 0, 0
