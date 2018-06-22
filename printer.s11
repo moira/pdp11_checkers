@@ -3,8 +3,8 @@ tpb = 177566
 .=torg+1000
 
 ;to use this in another program, copy main into your main (except the commands that you have there already, obviously),
-;each time you need to print something, place the string into buf1, place its
-;length into len1, call print
+;each time you need to print something, copy the string address into buf, like it is done in main below, place its
+;length into len, call print
 ;don't forget to add /r/n to the string (and to add 2 to the string length), 
 ;as in the example, if you want the next string to be printed on the new line
 
@@ -16,10 +16,18 @@ main:	mov pc, sp
 		mov #200, @#66
 		mov #100, @#tps		;IE enable
 
-print:	mov #buf1, -(sp)
-		mov #len1, -(sp)
-		jsr pc, printbuf
-		add #4, sp			;stack restore
+		mov #boardMes, buf
+		mov BMlength, len
+		jsr pc, print
+		halt
+
+print:		mov buf, -(sp)
+			mov len, -(sp)		;NB without "#" when using a label!
+			jsr pc, printbuf
+			add #4, sp			;stack restore
+w_loop:		tstb @#tps
+			bpl w_loop
+			rts pc
 
 printbuf:	tst busy
 			bgt printbuf
@@ -39,9 +47,14 @@ printc:		tst count
 sof:		clr busy
 			rti
 
-len1 = 9
-buf1: .ascii <aaaaaaa\r\n>
-.even
+;;printer variables
+
+len:	.word 0
+buf:	.word 0
 pointer: .blkw 1
 count: .word 0
 busy: .word 0
+
+.=torg+11000
+BMlength:	.word 14.
+boardMes:	.ascii <Board layout\r\n>
