@@ -15,7 +15,8 @@ main:		mov pc, sp
 ;;SETTING THE ENVIRONMENT TO USE THE PRINTER;;
 
 ;;BOARD PRINTING FUNCTION;;
-printB:		mov #80., len1
+printB:		mov #80., len
+			mov #buf1, buf
 			jsr pc, boardToS
 			jsr pc, print
 			halt
@@ -24,8 +25,8 @@ printB:		mov #80., len1
 
 ;;PRINTER;;
 
-print:		mov #buf1, -(sp)
-			mov len1, -(sp)		;NB without "#" when using a label!
+print:		mov buf, -(sp)
+			mov len, -(sp)		;NB without "#" when using a label!
 			jsr pc, printbuf
 			add #4, sp			;stack restore
 w_loop:		tstb @#tps
@@ -50,15 +51,18 @@ printc:		tst count
 sof:		clr busy
 			rti
 
-;;printer global variables
+;;printer variables
 
-len1:	.word 0
-buf1:	.blkw 100.			;the length of the board, we can increment the size of the buffer if we need to print something longer
+len:	.word 0
+buf:	.word 0
+
 pointer: .blkw 1
 count: .word 0
 busy: .word 0
 
 ;;end of printer global variables
+
+buf1:	.blkw 80.	;mysteriously breaks the program when moved lower
 
 ;;END OF PRINTER;;
 
