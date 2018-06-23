@@ -1,0 +1,82 @@
+tks = 177560
+tkb = 177562
+tps = 177564
+tpb = 177566
+.=torg + 2000
+;FAQ: what do you do with all this?
+
+main:		mov #input, @#60
+			mov #200, @#62
+			mov #output, @#64
+			mov #200, @#66
+			mov #print, @#20
+			mov #200, @#22
+			mov #buffer, in
+			mov #buffer, out
+			clr char_count
+			clr iot_count
+			mov #101, @#tks
+			mov #100, @#tps
+
+w:			wait
+			br w
+
+input:		movb @#tkb, @in
+			inc @#tks
+			inc in
+			inc char_count
+			cmp char_count, #1
+			bne reti
+			inc iot_count
+			cmp iot_count, max_len			;check the length of the buffer
+			beq reti						;not really, do something appropriate here
+			iot
+
+reti:		rti
+
+output:		dec char_count
+			cmp char_count, #0
+			beq reto
+
+print:		movb @out, @#tpb
+			cmpb @out, #8.
+			beq delete
+			cmpb @out, #13.
+			beq newline
+			br endPrint
+
+newline:	dec iot_count
+waitNL:		tstb @#tps	
+			bpl waitNL			;wait for the previous letter to be printed
+								;save the output
+			movb #10., @#tpb	;print the newline symbol
+			br endPrint
+
+delete:		;dec iot_count
+			;cmp #0, iot_count	;was this the first symbol?
+			;beq contDel
+cantDel:	;br endPrint			;check that it works
+contDel:	;dec iot_count
+waitDel1:	tstb @#tps
+			bpl waitDel1
+			movb #32., @#tpb	;print whitespace
+			tstb @#tps
+			bpl waitDel2
+			movb #8., @#tpb	;print another carriage return
+
+endPrint:	inc out
+waitEnd:	tstb @#tps
+			bpl waitEnd
+			rti
+
+reto:		rti
+
+char_count:	.blkw 1
+iot_count:	.blkw 1
+in:			.blkw 1
+out:		.blkw 1
+buffer:		.blkw 25.
+max_len:	.word 50.
+
+;to add:
+;collect output from buffer
