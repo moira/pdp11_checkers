@@ -1,0 +1,123 @@
+.=torg+1000
+
+
+main:				jsr pc,timeCo 			;for test purposes
+					halt
+
+
+;does not recieve parameters
+timeCo:				mov r0,-(sp) 			;saving r0's content			
+					mov r1,-(sp)			;saving r1's content 
+					mov r2,-(sp) 			;saving r2's content 
+					mov @#timer,r1 			;moving current time of the move to r1  
+					div @#rate,r0 			;dividing current time of the move by clock rate
+					mov #numStri,r2 		;moving address of string with nubmer to r2
+					mov r2,-(sp) 			;passing string adress as parameter for 'numToS'
+					mov r0,-(sp)			;passing quotient from division as parameter for 'numToS'
+					jsr pc,numToS 			;calling 'numToS'
+					add (sp),r2 			;adding number length to r3
+					mov (sp),r0 			;moving nubmer length to r2
+					inc r0 					;incrementing r2
+					add #4,sp 				;clearing the stack
+					movb #56,@r2 			;moving '.' char to string place defined with r3
+					inc r2 					;incrementing string iterator
+					mov r2,-(sp) 			;passing string adress as parameter for 'numToS'
+					mov r1,-(sp) 			;passing remainder as parameter for 'numToS'
+					jsr pc,numToS			;calling 'numToS'
+					add #4,sp 				;clearing the stack
+;					mov #13,len 			;moving 13 to 'len'
+;					mov #tLStri,buf 		;moving 'tLStri' adress to 'buf'
+;					jsr pc,print 			;calling 'print'
+;					mov r0,len 				;moving r2's content to 'len'
+;					mov #numStri,buf 	 	;moving 'numStri' adress to 'buf'
+;					jsr pc,print 			;calling 'print'
+;					mov #12,len 			;moving 12 to 'len'
+;					mov #secStri,buf 		;moving 'secStri' adress to 'buf'
+;					jsr pc,print 			;calling 'print'
+					mov (sp)+,r2 			;returning r3's content
+					mov (sp)+,r1 			;returning r2's content 
+					mov (sp)+,r0 			;returning r1's content
+					rts pc 					;returning from subroutine
+
+
+;2(sp) - number | output field for length
+;4(sp) - adress of the output string 
+numToS:				mov r0,-(sp) 			;saving r0's content
+					mov r1,-(sp)			;saving r1's content
+					mov r2,-(sp) 			;saving r2's content
+					mov 12(sp),r2 			;moving adress of output string to r2
+					mov 10(sp),r1 			;moving number to r1
+					mov #0,r0				;clearing r0
+					div #10.,r0 			;dividing passed number by 10.
+					add #60,r1 				;converting remainder into ascii char
+					movb r1,@r2 			;moving ascii char(last digit of the number) to the string 
+					inc r2 					;incrementing string iterator 	
+					mov #1, 10(sp) 			;moving length output on the place of passed number
+					tst r0 					;checking if quotient is zero
+					beq gotRevS 			;if yes - branch to 'gotRevS'(got reverted string)
+
+numStep:			mov r0, -(sp) 			;otherwise, continue by saving quotient in stack
+					inc 12(sp) 				;incrementing length value
+					mov (sp)+,r1 			;moving current number to r1
+					mov #0,r0
+					div #10.,r0 			;dividing saved quotient by 10.
+					add #60,r1 				;converting remainder into ascii char
+					movb r1,@r2 			;moving ascii char to the string
+					inc r2 					;incrementing string iterator
+					tst r0 					;checking if new quotient is zero
+					bne numStep 			;if no - repeat operations braching to 'numStep'
+
+gotRevS:			mov (sp)+,r2 			;otherwise, continue with returning r2's content
+					mov (sp)+,r1 			;returning r1's content
+					mov (sp)+,r0 			;returning r0's content
+					mov 4(sp),-(sp) 		;passing adress of the string as parameter for 'invStr'
+					mov 4(sp),-(sp)			;passing string length as parameter for 'invStr'
+					jsr pc,invStr 			;inverting the string by calling 'invStr'
+					add #4,sp 				;clearing the stack
+					rts pc 					;returning from subroutine
+
+
+
+;2(sp) - length of the string 
+;4(sp) - adress of the string 
+invStr:				cmp 2(sp),#1			;checking if string length is 1	
+					bne invSCont 			;if no - brach to 'invSCont'
+					rts pc 					;otherwise, return from subroutine
+invSCont:			mov r0,-(sp) 			;saving r0's content
+					mov r1,-(sp)			;saving r1's content
+					mov r2,-(sp) 			;saving r2's content
+					mov r3,-(sp) 			;saving r3's content 
+					mov 12(sp),r3 			;moving string length to r3
+					asr r3 					;dividing length by 2
+					mov 14(sp),r1 			;moving adress of the string to r1
+					mov 14(sp),r2 			;moving adress of the string to r2
+					add 12(sp),r2 			;adding string length to r2
+					sub #1,r2 				;subtracting 1 from r2
+				
+invLoop: 			movb @r1,r0 			;moving char from fisrt half of the string to r0
+					movb @r2,@r1 			;moving char from the second half to first half
+					movb r0,@r2 			;moving char from the first half to the second half
+					inc r1 					;incrementing r1
+					dec r2 					;decrementing r2
+					dec r3 					;decrementing r3
+					bne	invLoop 			;if r3 is not zero - branching to 'invLoop'
+					mov (sp)+,r3 			;otherwise, continue with returning r3's content
+					mov (sp)+,r2 			;returning r2's content
+					mov (sp)+,r1 			;returning r1's content
+					mov (sp)+,r0 			;returning r0's content
+					rts pc  				;returning from subroutine
+
+
+
+
+tLStri:				.ascii <Time left: >
+
+;empty(filled with whitespaces) string 50 chars long
+numStri:			.ascii <                                                  >
+
+secStri:			.ascii < seconds\r\n>		
+					.ascii < >
+
+timer:				.word 4372.
+
+rate:				.word 1000.
