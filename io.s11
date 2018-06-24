@@ -38,7 +38,12 @@ input:		movb @#tkb, @in
 			inc char_count
 			cmpb @#tkb, #8.
 			bne contIn
-			movb #32., @in
+			cmp iot_count, #0
+			bne contDel
+cantDel:	dec in
+			dec char_count
+			br contIn
+contDel:	movb #32., @in
 			inc in
 			inc char_count
 			movb #8., @in
@@ -48,6 +53,110 @@ input:		movb @#tkb, @in
 contIn:		inc @#tks
 			cmp char_count, #1
 			blt reti
+			inc iot_count
+			iot
+reti:		rti
+
+output:		dec char_count
+			cmp char_count, #0
+			beq reto
+
+print:		cmpb #13., @out
+			beq buffEnd
+			cmp iot_count, #50.			;check the length of the buffer
+			bgt buffEnd
+			movb @out, @#tpb
+			inc out
+reto:		rti
+
+buffEnd:	mov #buffer, in
+			mov #buffer, out
+			mov iot_count, outLen
+			dec outLen
+			clr char_count
+			clr iot_count
+			mov #1, anyOut
+			rti
+
+;receives string length and an address, copies a string of a given length from this
+copyStr:	mov outLen, -(sp)		;length
+			mov #buffer, -(sp)		;address of the source
+			dec (sp)
+			mov #outStr, -(sp)		;address of the destination
+			dec (sp)
+copyLoop:	inc (sp)
+			inc 2(sp)
+			dec 4(sp)
+			movb @2(sp), @(sp)
+			tst 4(sp)
+			bne copyLoop
+			mov #0, anyOut
+			add #6, sp
+			rts pc
+
+;;;THIS IS JUST THE NORMAL PRINTER, WE DON'T NEED TO COPY IT ONCE MORE
+mainpr:		mov #printc, @#20	;iot trap initialization
+			mov #200, @#22
+			mov #printc, @#64	;printer interrupt init
+			mov #200, @#66
+			mov #100, @#tps		;IE enable
+			mov #4, len
+			mov #nl, buf
+			jsr pc, print1
+			cmp outLen, #0
+			beq retPr
+			jsr pc, copyStr
+			;jsr pc, parser
+retPr:		rts pc
+
+
+print1:		mov buf, -(sp)
+			mov len, -(sp)
+			jsr pc, printbuf
+			add #4, sp			;stack restore
+w_loop:		tstb @#tps
+			bpl w_loop
+			rts pc
+
+printbuf:	tst busy
+			bgt printbuf
+			mov #1, busy
+			mov 4(sp), pointer
+			mov 2(sp), count
+			iot
+			rts pc
+
+printc:		tst count
+			ble sof
+			movb @pointer, @#tpb
+			inc pointer
+			dec count
+			rti
+
+sof:		clr busy
+			rti
+
+;;printer global variables
+
+len:	.word 0
+buf:	.word 0
+nl:		.ascii <\r\n$ >
+
+pointer: .blkw 1
+count: .word 0
+busy: .word 0
+
+char_count:	.blkw 1
+iot_count:	.blkw 1
+in:			.blkw 1
+out:		.blkw 1
+buffer:		.blkw 200.
+
+outLen:	.word 1
+anyOut:	.word 0
+outStr: .blkw 25.
+
+
 			inc iot_count
 			iot
 reti:		rti
