@@ -3,8 +3,8 @@ tpb = 177566
 .=torg+1000
 
 ;to use this in another program, copy main into your main (except the commands that you have there already, obviously),
-;each time you need to print something, copy the string address into buf, like it is done in main below, place its
-;length into len, call print
+;each time you need to print something, place the string into buf1, place its
+;length into len1, call print
 ;don't forget to add /r/n to the string (and to add 2 to the string length), 
 ;as in the example, if you want the next string to be printed on the new line
 
