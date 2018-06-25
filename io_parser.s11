@@ -1,0 +1,419 @@
+tks = 177560
+tkb = 177562
+tps = 177564
+tpb = 177566
+.=torg + 2000
+
+main:		mov pc, sp
+			tst -(sp)
+			jsr pc, init_pr
+l:			wait
+			br l
+			halt
+
+init_pr:	mov #emt_hndl, @#30
+			clr @#32
+			mov #input, @#60
+			mov #200, @#62
+			mov #output, @#64
+			mov #200, @#66
+			mov #print, @#20
+			mov #200, @#22
+			mov #buffer, in
+			mov #buffer, out
+			clr char_count
+			clr iot_count
+			mov #101, @#tks
+			mov #100, @#tps
+			rts pc
+
+emt_hndl:	mov #100, @#tks
+			jsr pc, mainpr
+			mov #input, @#60
+			mov #200, @#62
+			mov #output, @#64
+			mov #200, @#66
+			mov #print, @#20
+			mov #200, @#22
+			mov #101, @#tks
+			mov #100, @#tps
+			mov #0, anyOut
+			rti
+
+input:		movb @#tkb, @in
+			inc in
+			inc char_count
+			cmpb @#tkb, #8.
+			bne contIn
+			cmp iot_count, #0
+			bne contDel
+cantDel:	dec in
+			dec char_count
+			br contIn
+contDel:	movb #32., @in
+			inc in
+			inc char_count
+			movb #8., @in
+			inc in
+			inc char_count
+			sub #2, iot_count
+contIn:		inc @#tks
+			cmp char_count, #1
+			blt reti
+			inc iot_count
+			iot
+reti:		rti
+
+output:		dec char_count
+			cmp char_count, #0
+			beq reto
+
+print:		cmpb #13., @out
+			beq buffEnd
+			cmp iot_count, #50.			;check the length of the buffer
+			bgt buffEnd
+			movb @out, @#tpb
+			inc out
+reto:		rti
+
+buffEnd:	mov #buffer, in
+			mov #buffer, out
+			mov iot_count, outLen
+			dec outLen
+			clr char_count
+			clr iot_count
+			emt 3
+			rti
+
+;receives string length and an address, copies a string of a given length from this
+copyStr:	mov outLen, -(sp)		;length
+			mov #buffer, -(sp)		;address of the source
+			dec (sp)
+			mov #outStr, -(sp)		;address of the destination
+			dec (sp)
+copyLoop:	inc (sp)
+			inc 2(sp)
+			dec 4(sp)
+			movb @2(sp), @(sp)
+			tst 4(sp)
+			bne copyLoop
+			mov #0, anyOut
+			add #6, sp
+			rts pc
+
+;;;THIS IS JUST THE NORMAL PRINTER, WE DON'T NEED TO COPY IT ONCE MORE
+mainpr:		mov #printc, @#20	;iot trap initialization
+			mov #200, @#22
+			mov #printc, @#64	;printer interrupt init
+			mov #200, @#66
+			mov #100, @#tps		;IE enable
+			mov #4, len
+			mov #nl, buf
+			jsr pc, print1
+			cmp outLen, #0
+			beq retPr
+			jsr pc, copyStr
+			jsr pc, parser
+retPr:		rts pc
+
+print1:		mov buf, -(sp)
+			mov len, -(sp)
+			jsr pc, printbuf
+			add #4, sp			;stack restore
+w_loop:		tstb @#tps
+			bpl w_loop
+			rts pc
+
+printbuf:	tst busy
+			bgt printbuf
+			mov #1, busy
+			mov 4(sp), pointer
+			mov 2(sp), count
+			iot
+			rts pc
+
+printc:		tst count
+			ble sof
+			movb @pointer, @#tpb
+			inc pointer
+			dec count
+			rti
+
+sof:		clr busy
+			rti
+
+;;printer global variables
+
+len:	.word 0
+buf:	.word 0
+nl:		.ascii <\r\n$ >
+
+pointer: .blkw 1
+count: .word 0
+busy: .word 0
+
+char_count:	.blkw 1
+iot_count:	.blkw 1
+in:			.blkw 1
+out:		.blkw 1
+buffer:		.blkw 200.
+
+outLen:	.word 1
+anyOut:	.word 0
+outStr: .blkw 25.
+
+.=torg+7000
+
+parser:		;mov #main, sp
+			mov outLen, clen1
+			mov #outStr, str1
+			mov #4, clen2
+			mov #stop, str2
+			mov #-1, -(sp)
+			jsr pc, compStr
+			tst (sp)+
+			beq parTime			;CHANGE
+			tst clen1
+			beq retStop
+			cmpb @str1, #32.
+			beq retStop
+			mov #-1, command
+			;halt
+			rts pc
+
+retStop:	mov #1, command
+			;halt
+			rts pc
+
+parTime:	mov outLen, clen1
+			mov #outStr, str1
+			mov #4, clen2
+			mov #time, str2
+			mov #-1, -(sp)
+			jsr pc, compStr
+			tst (sp)+
+			beq parMove			;CHANGE
+			tst clen1
+			beq retTime
+			cmpb @str1, #32.
+			beq retTime
+			mov #-1, command
+			;halt
+			rts pc
+
+retTime:	mov #2, command
+			;halt
+			rts pc
+
+parMove:	mov outLen, clen1
+			mov #outStr, str1
+			mov #4, clen2
+			mov #move, str2
+			mov #-1, -(sp)
+			jsr pc, compStr
+			tst (sp)+
+			beq parStart
+			jsr pc, spaces
+			tst clen1
+			beq movFail
+			mov #-1, -(sp)
+			mov #0, command+2
+			mov #command+2, addrNum
+			jsr pc, getNum
+			cmp #1, (sp)+
+			bne movFail
+			cmp command+2, #77
+			bgt movFail
+			cmp command+2, #0
+			blt movFail
+			cmpb @str1, #32.
+			bne movFail
+			jsr pc, spaces
+			tst clen1
+			beq movFail
+			mov #-1, -(sp)
+			mov #0, command+4
+			mov #command+4, addrNum
+			jsr pc, getNum
+			cmp #1, (sp)+
+			bne movFail
+			cmp command+4, #77
+			bgt movFail
+			cmp command+4, #0
+			blt movFail
+			cmp clen1, #0
+			beq retMove
+			cmpb @str1, #32.
+			beq retMove
+movFail:	mov #-1, command
+			;halt
+			rts pc
+
+retMove:	mov #3, command
+			;halt
+			rts pc
+
+parStart:	mov outLen, clen1
+			mov #outStr, str1
+			mov #5, clen2
+			mov #start, str2
+			mov #-1, -(sp)
+			jsr pc, compStr
+			tst (sp)+
+			beq stFail
+			cmpb #32., @str1
+			bne stFail
+			jsr pc, spaces
+			tst clen1
+			beq stFail
+			cmpb @str1, #150
+			beq humanWh
+			cmpb @str1, #143
+			beq compWh
+			br stFail
+humanWh:	mov #150, command+2
+			br contSt
+compWh:		mov #143, command+2
+contSt:		dec clen1
+			inc str1
+			cmpb #32., @str1
+			bne stFail
+			jsr pc, spaces
+			tst clen1
+			beq stFail
+			mov #-2, -(sp)
+			mov #0, command+4
+			mov #command+4, addrNum
+			jsr pc, getNum
+			cmp #1, (sp)+
+			bne stFail
+			cmpb @str1, #32.
+			bne stFail
+			jsr pc, spaces
+			tst clen1
+			beq stFail
+			cmpb #150, @str1
+			beq humanBl
+			cmpb #143, @str1
+			beq compBl
+			br stFail
+humanBl:	mov #150, command+6
+			br contSt2
+compBl:		mov #143, command+6
+contSt2:	dec clen1
+			inc str1
+			cmpb #32., @str1
+			bne stFail
+			jsr pc, spaces
+			tst clen1
+			beq stFail
+			mov #-2, -(sp)
+			mov #0, command+10
+			mov #command+10, addrNum
+			jsr pc, getNum
+			cmp #1, (sp)+
+			bne stFail
+			cmp clen1, #0
+			beq retStart
+			cmpb @str1, #32.
+			beq retStart
+stFail:		mov #-1, command
+			rts pc
+			;halt
+retStart:	mov #4, command
+			;halt
+			rts pc
+
+command: .blkw 4 
+
+;takes the address of the substring and the number of digits to the length of the string
+;if all the rest of the string is filled by spaces, returns 0 is the second input field
+
+spaces:		inc clen1
+			dec str1
+spaceL:		dec clen1
+			inc str1
+			tst clen1
+			beq endSp
+			cmpb @str1, #32.
+			beq spaceL
+endSp:		rts pc
+
+;gets the length of the first and second string and the address of the first and the second string
+compStr:	cmp clen1, clen2
+			blt retFalse
+			jsr pc, spaces
+			cmp clen2, clen1
+			bgt retFalse
+cmpLoop:	cmpb @str1, @str2
+			bne retFalse
+			inc str2
+			inc str1
+			dec clen1
+			dec clen2
+			tst clen2
+			bne cmpLoop
+retTrue:	mov #1, 2(sp)
+			rts pc
+retFalse:	mov #0, 2(sp)
+			rts pc
+
+clen1:		.word 0
+clen2:		.word 0
+str1:		.word 0
+str2:		.word 0
+addrNum:	.word 0
+
+getNum:		inc clen1
+			dec str1
+numLoop:	dec clen1
+			inc str1
+			cmp clen1, #0
+			beq retNum
+			cmpb @str1, #32.
+			beq retNum
+			cmpb @str1, #60
+			blt numFalse
+			cmpb @str1, #71
+			bgt numFalse
+			mov r5, -(sp)
+			mov r4, -(sp)
+			clr r4
+			clr r5
+			movb @str1, r4
+			sub #60, r4
+			cmp #7, r4
+			bge contNum
+			cmp 6(sp), #-1
+			beq notOct
+		;	add #2, r4
+contNum:	mov @addrNum, r5
+			asl r5
+			asl r5
+			asl r5
+			cmp 6(sp), #-1
+			beq contNum2
+			add @addrNum, r5
+			add @addrNum, r5
+contNum2:	add r4, r5
+			mov r5, @addrNum
+			mov (sp)+, r4
+			mov (sp)+, r5
+			mov #1, 2(sp)
+			br numLoop
+notOct:		mov (sp)+, r4
+			mov (sp)+, r5
+numFalse:	mov #-1, 2(sp)
+retNum:		rts pc
+
+stop:		.ascii <stop>
+.even
+time:		.ascii <time>
+.even
+move:		.ascii <move>
+.even
+start:		.ascii <start>
+.even
+;outStr:		.ascii <start h 19 c 12 >
+;.even
+;outLen:		.word 20.
