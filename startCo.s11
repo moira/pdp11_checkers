@@ -1,0 +1,58 @@
+;times are given in common area
+;4(sp) - white player kind(0 - human, 1 - computer)
+;2(sp) - black player kind
+startCo:		mov #21.,len
+				mov #sNGStr,buf
+				jsr pc,print
+				mov #16.,len
+				mov #wNotif,buf
+				jsr pc,print
+				cmp 4(sp),#0
+				bne pCompuW
+				mov #0,whInst
+				mov #5.,len
+				mov #humStri,buf
+				jsr pc,print
+				br pBPla
+pCompuW:		mov #1,whInst
+				mov	#8.,len
+				mov #comStri,buf
+				jsr pc,print			
+pBPla:			mov #19.,len
+				mov #secPMStr,buf
+				jsr pc,print
+				mov #16.,len
+				mov #bNotif,buf
+				jsr pc,print
+				cmp 2(sp),#0
+				bne pCompub
+				mov #0,blInst
+				mov #5.,len
+				mov #humStri,buf
+				jsr pc,print
+				br enPSta
+pCompuB:		mov #1,blInst
+				mov	#8.,len
+				mov #comStri,buf
+				jsr pc,print			
+endPSta:		mov #19.,len
+				mov #secPMStr,buf
+				jsr pc,print
+				mov #1,gameIsAc
+				rts pc
+
+
+
+
+sNGStr:			.ascii <Starting a new game\r\n>
+
+wNotif:			.ascii <White player is >
+wPTLS: 			.ascii <                                                  >
+
+bNotif:			.ascii <Black player is >
+bPTLS:			.ascii <                                                  >
+
+secPMStr: 		.ascii < seconds per move\r\n>
+
+humStri:		.ascii <Human>
+comStri:		.ascii <Computer>

@@ -1,0 +1,37 @@
+;move command function
+
+;4(sp) - source
+;2(sp) - destination
+
+moveCo:			mov r0,-(sp)
+				mov 4(sp),r0
+				asl r0
+				add #Board,r0
+				cmp @r0,@#Player
+				bne cnExPrp
+									;
+cnExPrp:		mov #16.,len
+				mov #cExStriB,buf
+				jsr pc,print
+				mov @#outLen,len
+				mov #outStr,buf
+				jsr pc,print
+				mov #4.,len
+				mov #cExStriE,buf
+				jsr pc,print
+				mov (sp)+,r0
+				mov #-1,4(sp)
+				rts pc
+
+
+
+
+
+
+
+
+
+
+
+cExStriB:		.ascii <Cannot execute ">
+cExStriE:		.ascii <".\r\n>

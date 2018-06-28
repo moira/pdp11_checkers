@@ -1,0 +1,23 @@
+blTime:				.word 0					;time of black
+
+whTime:				.word 0					;time of white
+
+timer:				.word 0		 			;initialized to black or white time depending on the move parity
+
+timeOut:			.word 0					;'1' - time is out, '0' - time is not out
+
+;inittialization of timer and player's time limits is going to processed in 'top level' functions
+;all inputs gotten from user are saved in global variables proceeding multiplication by rate procedure
+
+;clock interrupt handler
+
+clock:				tst @#timeOut
+					beq dwnTime
+					rti 
+dwnTime:			sub #1, @#timer 		;decrementing 'timer'
+					tst @#timer				;checking if the time left is zero
+					beq riseTO				;if it is zero - change 'timeOut' value to '1'
+					rti 					;otherwise return from the interruption hander
+riseTO:				mov #1, @#timeOut		;rise the 'timeOut'
+					rti 					;return from interruption handler 
+

@@ -1,0 +1,68 @@
+;does not recieve parameters
+stopCo:			mov r4,-(sp)
+				mov #Board,-(sp)
+				mov #1,-(sp)
+				jsr pc,calcWP
+				add #4,sp
+				tst r4
+				beq drawCar
+				cmp #0,r4
+				bgt wWinCar
+				neg r4
+				mov #23.,len
+				mov #bPlayWP,buf
+				jsr pc,print
+				mov #WPStri,-(sp)
+				mov r4,-(sp)
+				jsr pc,numToS
+				mov (sp)+,len
+				mov #WPStri,buf
+				jsr pc,print
+				tst (sp)+
+				mov #23.,len
+				mov #bPVic,buf
+				jsr pc,print
+				br endSCoCh
+wWinCar:		mov #23.,len
+				mov #wPlayWP,buf
+				jsr pc,print
+				mov #WPStri,-(sp)
+				mov r4,-(sp)
+				jsr pc,numToS
+				mov (sp)+,len
+				mov #WPStri,buf
+				jsr pc,print
+				tst (sp)+
+				mov #23.,len
+				mov #wPVic,buf
+				jsr pc,print
+				br endSCoCh
+drawCar:		mov #24.,len
+				mov #drawStri,buf
+				jsr pc,print
+endSCoCh:		mov #0,gameIsAc
+				mov (sp)+,r4
+				rts pc
+				
+
+
+
+
+
+
+
+
+
+
+
+wPlaWP:			.ascii <WP for white player is >
+
+bPlaWP:			.ascii <WP for black player is >
+
+WPStri:			.ascii <                                                  >
+
+wPVic:			.ascii <\r\nWhite player wins!\r\n>
+
+bPVic:			.ascii <\r\nBlack player wins!\r\n>
+
+drawStri:		.ascii <It's a tie! Game over.\r\n>

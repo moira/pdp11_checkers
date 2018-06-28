@@ -1,0 +1,218 @@
+cls = 177546
+tps = 177564
+tpb = 177566
+tks = 177560
+tkb = 177562
+
+
+.=torg+2000
+
+
+main:		mov pc,sp
+			tst -(sp)
+			mov sp,stackTem
+			mov #printc, @#20	;iot trap initialization
+			mov #200, @#22
+			mov #printc, @#64	;printer interrupt init
+			mov #200, @#66
+			mov #100, @#tps		;IE enable
+			jsr pc,init_pr
+			mov #51.,len
+			mov #welcMes,buf
+			jsr pc,print
+stDataCl:	jsr pc,inBoard
+			mov #1,Steps
+			mov #1,Player
+			bis #101,@#tks
+stW8Loop:	tst @#gameIsAc
+			beq stW8Loop
+gameLb:		bic #177776,@#tks
+			jsr pc,printB
+			mov #16.,len
+			mov #cPString,buf
+			jsr pc,print
+			cmp #1,@#Player
+			beq nowIsWM
+			mov #6.,len
+			mov #blString,buf
+			jsr pc,print
+			tst @#blInst
+			bne wCompSt
+wHumSt:		mov #5.,len
+			mov #humStri,buf
+			jsr pc,print
+			br nLPri			
+nowIsWM:	mov #6.,len
+			mov #whString,buf
+			jsr pc,print
+			tst @#whInst
+			bne wCompSt
+			br wHumSt
+wCompSt:	mov #8.,len
+			mov comStri,buf
+			jsr pc,print
+nLPri:		mov #2.,len
+			mov #nlChar,buf
+			jsr pc,print
+			mov #0,-(sp)
+			mov #0,-(sp)
+			mov #1,-(sp)
+			mov #Board,-(sp)
+			mov @#Player,-(sp)
+			jsr pc,endCond
+			add #6,sp
+			tst 2(sp)+
+			beq contGam
+			cmp #1,(sp)+
+			beq uStopC
+			mov @#Player,-(sp)
+			jsr pc,switchPl
+			mov (sp)+,Player
+			add #4,sp
+			jmp gameLb
+uStopC:		jsr pc,stopCo
+			halt 					;not going to get here
+hMPrep: 	jmp humMove
+contGam:	cmp #1,@#Player
+			beq conAsWh
+			mov @#blTime,timer
+			tst @#blInst
+			beq hMPrep
+			br comMove
+conAsWh:	mov @#whTime,timer
+			tst @#whInst
+			beq hMPrep
+comMove:	mov #1,currPla
+			mov #1,Steps
+cmDLoop:	mov #tWinPar,-(sp)
+			mov #tDst,-(sp)
+			mov #tSrc,-(sp)
+			jsr pc,getMaxWP
+			add #6,sp
+			tst @#timeOut
+			bne pMovOut
+			mov @#tWinPar,WinParam
+			mov @#tDst,DstPos
+			mov @#tSrc,SrcPos
+			add #2,@#Steps
+			cmp #11,@#Steps
+			beq pMovOut
+			br cmDLoop
+pMovOut:	bic #177776,@#tks
+			bic #177776,@#cls
+			mov #Board,-(sp)
+			mov @#SrcPos,4(pc)
+			mov @#DstPos,4(pc)
+			jsr r5,movPiece
+			.word 0
+			.word 0
+			tst (sp)+
+			cmp #1,@#Player
+			beq whEnMov
+			mov #6.,len
+			mov #blStrin,buf
+			jsr pc,print
+			br conPring
+whEnMov:	mov #6.,len
+			mov #whStrin,buf
+			jsr pc,print
+conPring:	mov #19.,len
+			mov #cmtStri,buf
+			jsr pc,print
+			mov r0,-(sp) 			;saving r0's content			
+			mov r1,-(sp)			;saving r1's content 
+			mov r2,-(sp) 			;saving r2's content 
+			mov @#timer,r1 			;moving current time of the move to r1  
+			neg r1
+			cmp #1,@Player
+			beq addWhTi
+			add @#blTime,r1
+			br coTiAdj
+addWhTi:	add @#whTime,r1
+coTiAdj:	div @#rate,r0 			;dividing current time of the move by clock rate
+			mov #mvOutN,r2 			;moving address of string with nubmer to r2
+			mov r2,-(sp) 			;passing string adress as parameter for 'numToS'
+			mov r0,-(sp)			;passing quotient from division as parameter for 'numToS'
+			jsr pc,numToS 			;calling 'numToS'
+			add (sp),r2 			;adding number length to r3
+			mov (sp),r0 			;moving nubmer length to r2
+			inc r0 					;incrementing r2
+			add #4,sp 				;clearing the stack
+			movb #56,@r2 			;moving '.' char to string place defined with r3
+			inc r2 					;incrementing string iterator
+			mov r2,-(sp) 			;passing string adress as parameter for 'numToS'
+			mov r1,-(sp) 			;passing remainder as parameter for 'numToS'
+			jsr pc,numToS			;calling 'numToS'
+			add #4,sp 				;clearing the stack
+			mov r0,len 				;moving r2's content to 'len'
+			mov #mvOutN,buf 	 	;moving 'mvOutN' adress to 'buf'
+			jsr pc,print 			;calling 'print'
+			mov #12,len 			;moving 12 to 'len'
+			mov #secStri,buf 		;moving 'secStri' adress to 'buf'
+			jsr pc,print 			;calling 'print'
+			mov (sp)+,r2 			;returning r3's content
+			mov (sp)+,r1 			;returning r2's content 
+			mov (sp)+,r0 			;returning r1's content
+			mov @#Player,-(sp)
+			jsr pc,switchPl
+			mov (sp)+,Player
+			jmp gameLb
+humMove:	mov #0,currPla
+hmLoo:		tst @#timeOut
+			beq hmLoo
+			bic #177776,@#cls
+			bic #177776,@#tks
+			cmp #1,@#Player
+			beq whPGaOv
+			mov #6.,len
+			mov #blString,buf
+			jsr pc,print
+resOPhr:	mov #34.,len
+			mov #huTiLos,buf
+			jsr pc,print
+			mov @#stackTem,sp
+			mov #0,gameIsAc
+			jmp stDataCl
+whPGaOv:	mov #6.,len
+			mov #whString,buf
+			jsr pc,print
+			br resOPhr		
+
+			
+
+
+
+
+
+
+stackTem:		.word 0
+
+welcMes:		.ascii <Welcome to 341012706 and 336455308 checkers game!\r\n>
+
+gameIsAc:		.word 0
+
+whString:		.ascii <White >
+
+blString:		.ascii <Black >
+
+cPString:		.ascii <Current Player: >
+
+nlChar:			.ascii <\r\n>
+
+whInst:			.word 0 			;0 - human, 1 - computer
+
+blInst:			.word 0
+
+currPla:		.word 0				;0 - human, 1 - computer
+
+tSrc:			.word 0
+
+tDst:			.word 0
+
+tWinPar:		.word 0
+
+cmtStri:		.ascii <Computer move took >
+
+mvOutN:			.ascii <                                                  >
+
+huTiLos:		.ascii <Human is out of time. Game over.\r\n>

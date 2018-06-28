@@ -1,0 +1,19 @@
+;initialization of the board
+;does not recieve parameters
+
+inBoard:	mov #-1,-(sp) 				;creates an iterator to count steps
+			mov #Board,-(sp) 			;creates a copy of play board
+			mov #orBoard,-(sp) 			;creates a copy of starting position board
+			sub #2,2(sp) 				;sets the current address to the word just before the play board
+			sub #2,(sp) 				;sets the current address to the word just before the starting board
+bInLoop:	add #2,2(sp) 				;incrementing adress of processed field
+			add #2,(sp) 				;incrementing adress of processed field
+			inc 4(sp) 					;incrementing number of the square
+			cmp 4(sp),#100 				;checking if there are still squares to iterate over them
+			bge inedB 					;if no - branch to 'inedB'
+			mov @(sp),@2(sp) 			;otherwise - move token from starting to play board
+			br bInLoop			 		;branch to 'bInLoop'
+inedB:		add #6,sp 					;clearing stack
+			rts pc 						;returning from subroutine
+
+
