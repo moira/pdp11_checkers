@@ -1,0 +1,2111 @@
+cls = 177546
+tps = 177564
+tpb = 177566
+tks = 177560
+tkb = 177562
+
+
+.=torg+2000
+
+
+main:		mov pc,sp 				;adjusting stack
+			tst -(sp) 				;adjusting stack
+			mov sp,stJero 			;saving value in common area
+			mov #emtHand,@#30 		;moving emt handler to place 	
+			mov #0,@#32 			;moving PSW for emt handler
+			mov #clock,@#100 		;moving clock handler
+			mov #240,@#102 			;moving PSW for clock handler
+			jsr pc,switchPr 		;calling function for adjusting output mode
+			mov #54.,len 			;moving 54. to 'len'
+			mov #welcMes,buf 		;moving 'welcMess' adress to 'buf'
+			jsr pc,print1	 		;calling 'print1'
+stDataCl:	jsr pc,init_pr 			;calling function for adjusting i\o mode
+			jsr pc,inBoard 			;calling function for initializing board
+			mov #1,Steps 			;moving 1 to 'Steps'
+			mov #1,Player 			;moving 1 to 'Player'
+			bis #101,@#tks 		 	;enabling input
+			tst @#gameIsAc 			;checking if the game is active
+			beq .-4 				;if no - checking one more time
+gameLb:		mov #0,@#tks 			;disabling input
+			jsr pc,switchPr 		;switching to output mode
+			jsr pc,cpyToT
+			jsr pc,printB 			;printing board
+			mov #17.,len 			;moving 17. to 'len'
+			mov #cPString,buf 		;moving 'cPString' adress to 'buf'
+			jsr pc,print1 			;calling 'print1'
+			cmp #1,@#Player 		;checking if player is white
+			beq nowIsWM 			;if yes - branching to 'nowIsWM'
+			mov #6.,len 			;moving 6. to 'len'
+			mov #blString,buf 		;moving 'blString' to 'buf'
+			jsr pc,print1 			;calling 'print1'
+			tst @#blInst 			;checking if black player is computer
+			bne wCompSt 			;if no - branching to wCompSt
+wHumSt:		mov #5.,len 			;moving humStri length to len
+			mov #humStri,buf 		;moving humStri to buf
+			jsr pc,print1			;printing human string
+			mov #0,currPla 			;assigning human flag for current player 
+			br nLPri			 	;branching to nLPri
+nowIsWM:	mov #6.,len 			;moving whString length to len
+			mov #whString,buf 		;moving whString to buf
+			jsr pc,print1 			;printing whString
+			tst @#whInst 			;checking if white player is human
+			bne wCompSt 			;if no - branching to wCompSt
+			br wHumSt 				;branching to wHumSt
+wCompSt:	mov #8.,len 			;moving comStri length to len
+			mov #comStri,buf 		;moving comStri to buf
+			jsr pc,print1 		 	;printing comStri
+			mov #1,currPla			;assigning computer flag for current player
+nLPri:		mov #5.,len 			;moving nlChar length to len
+			mov #nlChar,buf 		;moving nlChar to buf
+			jsr pc,print1 			;printing nlChar
+			mov #0,-(sp)			;passing output field for endCond
+			mov #0,-(sp) 			;passing output field for endCond
+			mov #1,-(sp) 			;passing steps for endCond
+			mov #Board,-(sp) 		;passing board for endCond
+			mov @#Player,-(sp) 		;passing player for endCond
+			jsr pc,endCond 			;calling endCond
+			add #6,sp 				;clearing stack
+			tst 2(sp) 				;checking if there is continue flag from endCond
+			beq contGam 			;if yes - branching to contGam
+			cmp #1,2(sp) 			;checking if there is stop flag from endCond
+			beq uStopC 				;if yes - branching to uStopC
+			add #4,sp 				;clearing stack
+			mov @#Player,-(sp) 		;passing player to stack
+			jsr pc,switchPl 		;inverting player
+			mov (sp)+,Player 		;changing player
+			mov #34.,len 			;passing hasNoMov len
+			mov #hasNoMov,buf 		;passing hasNoMov
+			jsr pc,print1 			;printing hasNoMov
+			jmp gameLb 				;jumping to gameLb
+uStopC:		add #4,sp 				;clearing stack
+			jsr pc,stopCo 			;calling stopCo
+			halt 					;not going to get here
+		 	jmp humMove 			;jumping to humMove
+contGam:	add #4,sp 				;clearing stack
+			cmp #1,@#Player 		;checking if current player is white
+			beq conAsWh 			;if yes - branching to conAsWh
+			mov @#blTime,timer 		;moving black time into timer
+			tst @#blInst 			;checking if black player is human
+			beq contGam-4 			;if yes - branching to contGame-4
+			br .+16 				;branching to .+16
+conAsWh:	mov @#whTime,timer 		;moving white time to timer
+			tst @#whInst 			;checking if white player is human
+			beq contGam-4 			;if yes - branching to contGame-4
+			mov #1,currPla 			;intializing currPla to 1
+			mov #1,Steps 			;moving 1 to steps
+			jsr pc,init_pr 			;changing i\o mode
+			mov @#rate,rateCoun 	;moving rate into rateCoun
+			mov #0,timeOut 			;moving not flag to timeOut
+			jsr pc,cpyToT 			;calling cpyToT
+			bis #101,@#tks 			;enabling input
+			bis #101,@#cls 			;enabling clock
+cmDLoop:	mov #tWinPar,-(sp) 		;passing param for getMaxWP
+			mov #tDst,-(sp)			;passing param for getMaxWP
+			mov #tSrc,-(sp)			;passing param for getMaxWP
+			jsr pc,getMaxWP 		;calling getMaxWP
+			add #6,sp 				;clearing stack
+			tst @#timeOut 			;checking if time is out
+			bne pMovOut 			;if yes - branching to pMovOut
+			mov @#tWinPar,WinParam 	;moving temp param to original param
+			mov @#tDst,DstPos 		;moving temp param to original param
+			mov @#tSrc,SrcPos 		;moving temp param to original param
+			add #2,@#Steps 			;incrementing steps by 2
+			cmp #11,@#Steps 		;checking if number of steps is equal to 11
+			beq pMovOut 			;if yes - branching to pMovOut
+			jsr pc,cpyFrT			;calling cpyFrT
+			br cmDLoop 				;branching to cmDLoop
+pMovOut:	mov #0,@#tks 			;disabling input
+			mov #0,@#cls 			;disabling clock
+			jsr pc,cpyFrT 			;calling cpyFrT
+			cmp #1,@#Steps 			;checking if succeded to calculate at move with smallest step
+			bne .+36 				;if yes - branching to .+36
+			mov #0,-(sp) 			;passing output field for getPosMo
+			mov #Board,-(sp) 		;passing board for getPosMo
+			mov @#Player,-(sp) 		;passing player for  getPosMo
+			jsr pc,getPosMo 		;calling getPosMo
+			add #2,sp 				;clearing stack
+			mov (sp)+,SrcPos 		;passing possible move to source param of movPiece 
+			mov (sp)+,DstPos 		;passing possible move to dest param of movPiece 
+			jsr pc,switchPr 		;switching i\o mode
+			mov #Board,-(sp) 		;passing board param for movPiece
+			mov @#SrcPos,.+20 		;passing source for movPiece
+			mov @#DstPos,.+14 		;passing dest for movPiece
+			jsr r5,movPiece 		;calling movPiece
+			.word 0 				;inline
+			.word 0 				;inline
+			tst (sp)+ 				;clearing stack
+backFEmt:	mov #3.,len 			;passing iniNLS len 
+			mov #iniNLS,buf 		;passing iniNLS
+			jsr pc,print1 			;printing iniNLS
+			cmp #1,@#Player 		;checking if player is white
+			beq .+24 				;if yes - branching to .+24
+			mov #6.,len 			;passing blString len
+			mov #blString,buf 		;passing blString
+			jsr pc,print1 			;printing blString
+			br conPring				;branching to conPring
+			mov #6.,len 			;passing whString len
+			mov #whString,buf 		;passing whString
+			jsr pc,print1 			;printing whString
+conPring:	cmp @#currPla,#0 		;checking if player is human
+			bne .+20 				;if no - branching to .+20
+			mov #16.,len 			;passing hmtStri len
+			mov #hmtStri,buf 		;passing hmtStri
+			br .+16 				;branching to .+16
+			mov #19.,len 			;passing cmtStri len
+			mov #cmtStri,buf 		;passing cmtStri
+			jsr pc,print1 			;printing cmtStri or hmtStri
+			mov r0,-(sp) 			;saving r0's content
+			mov r2,-(sp) 			;saving r2's content 
+			mov #numStri,r2 		;moving address of string with nubmer to r2
+			mov r2,-(sp) 			;passing string adress as parameter for 'numToS'
+			cmp #1,@#Player 		;checking if player is white
+			beq .+10 				;branching to .+10
+			mov @#blTime,-(sp) 		;passing blTime to stack
+			br .+6 					;branching to .+6
+			mov @#whTime,-(sp) 		;passing whTime to stack
+			sub @#timer,(sp)		;passing quotient from division as parameter for 'numToS'
+			cmp #0,@#rateCoun 		;checking if rateCoun is 0
+			bne .+6 				;branching to .+6
+			add #1,(sp) 			;adding 1 to timer param
+			jsr pc,numToS 			;calling 'numToS'
+			add (sp),r2 			;adding number length to r2
+			mov (sp),r0 			;moving nubmer length to r0
+			add #2,r0 				;incrementing r2
+			add #4,sp 				;clearing the stack
+			movb #56,@r2 			;moving '.' char to string place defined with r2
+			inc r2 					;incrementing string iterator
+			mov r2,-(sp) 			;passing string adress as parameter for 'numToS'
+			mov @#rate,-(sp) 		;passing rate to stack
+			sub @#rateCoun,(sp) 	;subtracting rateCoun from rate
+			cmp #0,@#rateCoun 		;checking if rateCoun is 0
+			bne .+6 				;if no - branching to .+6
+			mov #0,(sp) 			;moving 0 to numToS
+			jsr pc,numToS			;calling 'numToS'
+			add #4,sp 				;clearing the stack
+			mov r0,len 				;moving r2's content to 'len'
+			mov #numStri,buf 	 	;moving 'numStri' adress to 'buf'
+			jsr pc,print1 			;calling 'print1'
+			mov (sp)+,r2 			;returning r2's content
+			mov (sp)+,r0 			;returning r0's content
+			mov #10.,len 			;passing secStri len
+			mov #secStri,buf 		;passing secStri
+			jsr pc,print1 			;printing secStri
+			mov @#Player,-(sp) 		;passing player for switch
+			jsr pc,switchPl 		;inverting player
+			mov (sp)+,Player 		;assigning inverted player
+			jmp gameLb 				;jumping to gameLb
+humMove:	mov #0,currPla 			;moving 0 to currPla
+			jsr pc,init_pr 			;switching i\o mode
+			bis #101,@#tks 			;enabling input
+			mov #0,timeOut 			;moving 0 to timeOut
+			mov @#rate,rateCoun 	;moving rate to rateCoun
+			bis #101,@#cls 			;enabling clock
+			wait 					;for better input
+			tst @#timeOut 			;checking if time is out
+			beq .-6					;if no - branching to .-6
+			mov #0,@#cls 			;disabling clock
+			mov #0,@#tks 			;disabling input
+			jsr pc,switchPr 		;switching i\o mode
+			mov #3.,len 			;passing iniNLS len
+			mov #iniNLS,buf 		;passing iniNLS
+			jsr pc,print1 			;printing iniNLS
+			cmp #1,@#Player 		;checking if current player is white
+			beq .+54 				;branching to .+54
+			mov #6.,len 			;passing blString len
+			mov #blString,buf 		;passing blString
+			jsr pc,print1 			;printing blString
+			mov #40.,len 			;passing huTiLos len
+			mov #huTiLos,buf 		;passing huTiLos
+			jsr pc,print1 			;printing huTiLos
+			mov #0,gameIsAc 		;checking if the game is active
+			jmp stDataCl 			;jumping to stDataCl
+			mov #6.,len 			;passing whString len 
+			mov #whString,buf 		;passing whString
+			jsr pc,print1 			;printing whString 
+			br .-52	 				;branching to .-52
+
+
+;Gives any field which contains piece of a given player
+;Output field 6(sp)
+;Board 4(sp) \ output field
+;Current player 2(sp)
+getPosMo:	mov #-1, -(sp)		;creates an iterator to count steps
+			mov 6(sp), -(sp)	;creates a copy of the board address
+			sub #2, (sp)		;sets the current address to the word just before the board for convenient iteration
+			add #2, (sp)		;increments the address in order for it to point to the next square
+			inc 2(sp)			;increments the number of the square (from 0 to 77)
+			cmp 2(sp), #100		;checks if there are any squares left
+			bge retWitF			;if there are none, ends iteration					
+			cmp @(sp), 6(sp)	;does the square contain the token of the player that was passed to the iterator?
+			bne getPosMo+14		;if it doesn't, just continue to iterate over squares
+			mov 2(sp),-(sp) 	;passing source for canMoveR
+			mov 2(sp),-(sp) 	;passing board adress for canMoveR
+			mov 12(sp),-(sp) 	;passing player for canMoveR
+			jsr pc,canMoveR 	;calling canMoveR
+			add #4,sp			;clearing stack
+			cmp #-1,(sp) 		;checking if there is a possible move
+			bne retWitF 		;if yes - branching to retWitF
+			tst (sp)+ 			;clearing stack
+			mov 2(sp),-(sp) 	;passing param for canMoveL
+			mov 2(sp),-(sp) 	;passing param for canMoveL
+			mov 12(sp),-(sp) 	;passing param for canMoveL
+			jsr pc,canMoveL 	;calling canMoveL
+			add #4,sp 			;clearing stack
+			cmp #-1,(sp) 		;checking if there is a possible move
+			bne retWitF 		;branching to retWitF
+			add #2,sp 			;clearing stack
+			br getPosMo+14		;branching to loop
+retWitF:	mov (sp),14(sp) 	;moving destination to output
+			mov 4(sp),12(sp) 	;moving source to output
+			add #6,sp 			;clearing stack
+			rts pc 				;returns to the calling function			
+			
+			
+iniNLS:		.ascii <\n\n\r>
+.even
+stJero:		.word 0
+.even
+hasNoMov:	.ascii <\r\n\nCurrent player has no moves!\r\n\n>
+.even
+;move command function
+
+;;;dest is command+4, source is command+2
+
+moveCo:			mov #0,@#tks 					;disabling input
+				jsr pc,switchPr 				;switching i\o mode
+				mov r0,-(sp) 					;saving r0's value
+				mov @#command+2,r0 				;moving source into r0
+				asl r0 							;multiplying r0 by 2
+				add #Board,r0					;adding board adress to r0
+				cmp @r0,@#Player 				;checking if the is players token in gotten field
+				beq .+4 						;if no - branching to cnExPrp
+				br cnExPrp+4 					;branching to cnExPrp+4
+				mov @#command+2,-(sp) 			;passing source for canMoveR
+				mov r0,-(sp) 					;passing adress for canMoveR
+				mov @#Player,-(sp) 				;passing player for canMoveR
+				jsr pc,canMoveR 				;calling canMoveR
+				cmp 4(sp),@#command+4 			;comparing output and dest
+				beq chBoSt 						;if equal - branch to chBoSt
+				add #6,sp 						;clearing stack
+				mov @#command+2,-(sp) 			;returning source param
+				mov r0,-(sp) 					;passing source for canMoveL
+				mov @#Player,-(sp) 				;passing player for canMoveL
+				jsr pc,canMoveL 				;calling canMoveL
+				cmp 4(sp),@#command+4 			;comparing output and dest 
+				beq chBoSt					 	;if equal - branch to chBoSt
+cnExPrp:		add #6,sp 						;clear stack
+				mov (sp)+,r0
+				jsr pc,cannotEx 				;calling cannotEx
+				rts pc 							;returning from suroutine
+chBoSt:			add #6,sp 						;clearing stack
+				mov #0,@#cls 	 				;disabling clock
+				mov #Board,-(sp) 				;passing board for movPiece
+				mov @#command+2,.+20 			;source for movPiece
+				mov @#command+4,.+14 			;dest for movPiece
+				jsr r5,movPiece 				;calling movPiece
+				.word 0 						;inline
+				.word 0 						;inline
+				tst (sp)+ 						;clearing stack
+				emt 0 							;emt interrupt with 0 as param
+
+
+
+;;
+cannotEx:	jsr pc,switchPr 		;switching i/o mode
+			mov #18.,len 			;passing cExStriB len
+			mov #cExStriB,buf 		;passing cExStriB
+			jsr pc,print1 			;printing cExStriB
+			mov @#outLen,len 		;passing outLen content to len
+			mov #outStr,buf 		;passing outStr 
+			jsr pc,print1 			;printing outStr
+			mov #7.,len 			;passing cExStriE len
+			mov #cExStriE,buf 		;passing cExStriE
+			jsr pc,print1 			;printing cExStriE
+			jsr pc,init_pr			;switching i\o mode
+			rts pc 					;returning from subroutine
+			
+
+
+
+;does not recieve parameters
+stopCo:			mov #0,@#cls 		;disabling clock 
+				mov #0,@#tks 		;disabling input
+				jsr pc,switchPr 	;switching i\o mode
+				cmp #1,@#currPla 	;checking if current player is computer
+				bne .+6 			;if no - branching to .+6
+				jsr pc,cpyFrT 		;calling cpyFrT
+				mov r4,-(sp) 		;saving r4's content
+				mov #0,-(sp) 		;passing output field for endCond
+				mov #0,-(sp) 		;passing output field for endCond
+				mov #1,-(sp) 		;passing steps for endCond
+				mov #Board,-(sp) 	;passing board for endCond
+				mov @#Player,-(sp) 	;passing player for endCond
+				jsr pc,endCond 		;calling endCond
+				add #10,sp 			;clearing stack
+				mov #Board,-(sp) 	;passing board 	
+				mov #1,-(sp) 		;
+				jsr pc,calcWP 		;calling calcWP
+				add #4,sp 			;clearing stack
+				tst r4 				;checking if output is 0
+				beq drawCar 		;if yes - branch to drawCar
+				cmp r4,#0 			;checking if out is positive
+				bgt wWinCar 		;if yes - branch to wWinCar
+				mov #Board,-(sp) 	;passing board
+				mov #2,-(sp) 		;
+				jsr pc,calcWP 		;calling calcWP
+				add #4,sp 			;clearing stack
+				mov #26.,len 		;passing bPlaWP len
+				mov #bPlaWP,buf 	;passing bPlaWP
+				jsr pc,print1 		;printing bPlaWP
+				mov #WPStri,-(sp) 	;passing WPStri
+				cmp 2(sp),#1 		;checking if there is end condition
+				bne .+10 			;branching to .+10
+				mov #20.,-(sp) 		;moving 20. to
+				br .+16 			;branching to .+16
+				cmp r4,#10 			;checking if r4's content less the 10
+				blt .+6 			;if yes - branch to .+6
+				add #2,r4 			;adding 2 to r4
+				mov r4,-(sp) 		;passing r4's content
+				jsr pc,numToS 		;calling numToS
+				mov (sp)+,len 		;passing out to len
+				mov #WPStri,buf 	;passing WPStri
+				jsr pc,print1 		;printing WPStri
+				tst (sp)+ 			;clearing stack
+				tst (sp)+ 			;clearing stack
+				mov #26.,len 		;passing bVic len
+				mov #bPVic,buf 		;passing bVic
+				jsr pc,print1 		;printing bVic
+				br endSCoCh 		;branching to endSCoCh
+wWinCar:		mov #26.,len 		;passing wPlaWP len
+				mov #wPlaWP,buf 	;passing wPlaWP
+				jsr pc,print1 		;printing wPlaWP
+				mov #WPStri,-(sp) 	;passing WPStri
+				cmp 2(sp),#1 		;checking if there is end condition
+				bne .+10 			;branching to .+10
+				mov #20.,-(sp) 		;moving 20. to
+				br .+16 			;branching to .+16
+				cmp r4,#10 			;checking if r4's content less the 10
+				blt .+6 			;if yes - branch to .+6
+				add #2,r4 			;adding 2 to r4
+				mov r4,-(sp) 		;passing r4's content
+				jsr pc,numToS 		;calling numToS
+				mov (sp)+,len 		;passing out to len
+				mov #WPStri,buf 	;passing WPStri
+				jsr pc,print1 		;printing WPStri
+				tst (sp)+ 			;clearing stack 
+				mov #26.,len 		;passing wPVic len
+				mov #wPVic,buf 		;passing wPVic
+				jsr pc,print1 		;printing wPVic
+				br endSCoCh 		;branching to endSCoCh
+drawCar:		mov #32.,len 		;passing drawStri len
+				mov #drawStri,buf 	;passing drawStri
+				jsr pc,print1 		;printing drawStri
+endSCoCh:		mov #0,gameIsAc 	;game is not active
+				mov (sp)+,r4 		;returning r4's value
+				emt 2 				;emt with param=2
+				
+				
+						
+
+;Function that gives best move for a given state on the board
+;WinParam: 6(sp)
+;DstPos: 4(sp)
+;SrcPos: 2(sp)
+
+getMaxWP:			mov #-21,@6(sp) 		;initializing WinParam to minus infinity
+					cmp #1, @#timeOut		;checking if the time is out
+					bne .+4					;if not - branching to "GMWPcont"
+					rts pc 					;returning from subroutine
+					mov #0,-(sp)			;passing first output field for "endCond"
+					mov #0,-(sp) 			;passing second output field for "endCond"
+					mov @#Steps,-(sp) 		;passing steps as parameter for "endCond"
+					mov #Board,-(sp) 		;passing board as parameter for "endCond"
+					mov @#Player,-(sp) 		;passing current player as parameter for "endCond"
+					jsr pc,endCond 			;calling "endCond"
+					add #6,sp 				;clearing irrelevant stack area
+					cmp #1,2(sp) 			;checking if there is end condition satisfied
+					beq endPut 				;branching to "endPut"
+					cmp #2,2(sp)			;if there is pass cond satisfied
+					beq .+4 				;branching to "pasVar"
+					br fMovScan         	;branching to "fMovScan"
+
+					add #4,sp   			;clearing stack
+					mov #0,-(sp) 			;passing output field for "scanMov"
+					mov #Player,-(sp) 		;passing original player for "scanMov"
+					mov #Board,-(sp) 		;passing board for "scanMov"
+					mov @#Steps,-(sp) 		;passing steps for "scanMov"
+					dec (sp) 				;decrementing steps passed for "scanMov"
+					mov @#Player,-(sp) 		;passing current player for "scanMov"
+					jsr pc,switchPl 		;inverting player
+					jsr pc,scanMov 			;calling "scanMov"
+					add #10,sp 				;clearing stack
+					mov (sp),@10(sp) 		;changing WinParam
+					tst (sp)+ 				;clearing stack
+					mov #0,-(sp)			;passing output field for "getAnyF"
+					mov #Board,-(sp)		;passing board for "getAnyF"
+					mov @#Player,-(sp)		;passing player for "getAnyF"
+					jsr pc,getAnyF			;calling "getAnyF"
+					add #4,sp 				;clearing stack
+					mov (sp),@6(sp) 		;assigning destination to DstPos label
+					mov (sp),@4(sp) 		;assigning source to SrcPos label
+					tst (sp)+ 				;clearing stack
+					rts pc			 		;returning from subroutine
+
+endPut:				mov (sp),@12(sp) 		;putting winning parameter into output field
+					add #4,sp 				;clearing irrelevant stack area
+					mov #0,-(sp)			;passing output field for "getAnyF"
+					mov #Board,-(sp)		;passing board for "getAnyF"
+					mov @#Player,-(sp)		;passing player for "getAnyF"
+					jsr pc,getAnyF			;calling "getAnyF"
+					add #4,sp 				;clearing stack
+					mov (sp),@6(sp) 		;assigning destination to DstPos label
+					mov (sp),@4(sp) 		;assigning source to SrcPos label
+					tst (sp)+ 				;clearing stack
+					rts pc  				;returning from subroutine
+
+					jmp fMovEnd				;jumping to "scanEnd"
+
+fMovScan:			add #4,sp               ;clearing stack
+					mov #-1,-(sp)			;creates an iterator to count steps
+					mov #Board,-(sp)		;creates a copy of the board address
+					sub #2,(sp)				;sets the current address to the word just before the board for convenient iteration
+
+fMovLoop:			cmp #1,@#timeOut 		;checking if time is out
+					bne .+4					;if no - branching to 'FMLC'
+					br fMovScan-4 			;otherwise, branching to 'sEndJ'
+					add #2,(sp)				;increments the address in order for it to point to the next square
+					inc 2(sp)				;increments the number of the square (from 0 to 77)
+					cmp 2(sp),#100			;checks if there are any squares left ;should be 77, this is a test version
+					bge fMovScan-4			;if there are none, ends iteration					
+					cmp @(sp),@#Player		;does the square contain the token of the original player
+					bne fMovLoop			;if it doesn't, just continue to iterate over squares
+
+recFMov:			mov 2(sp),-(sp)			;passing current source as parameter for "canMoveR"
+					mov 2(sp),-(sp) 		;passing board as parameter for "canMoveR"
+					mov @#Player,-(sp) 		;passing current player as parameter for "canMoveR"
+					jsr pc,canMoveR 		;calling "canMoveR"
+					add #4,sp 				;clearing stack
+					cmp #-1,(sp) 			;checking if there are moves on the right path
+					beq fMovLP 				;if no - branching to "fMovLP", otherwise - proceeding
+					mov #Board,-(sp)		;passing board as parameter for "movPiece"(3 stack elements, last - dest)
+					mov 6(sp),.+20			;passing current source as parameter for "movPiece"
+					mov 2(sp),.+14			;passing found destination as parameter for "movPiece"
+					jsr r5,movPiece 		;calling "movPiece"
+					.word 0 				;inline parameter for "movPiece"
+					.word 0 				;inline parameter for "movPiece"
+					tst (sp)+ 				;clearing stack(nse=3)
+					mov #0,-(sp)     		;passing output field for "scanMov"
+					mov #Player,-(sp) 		;passing original player as parameter for "scanMov" 
+					mov #Board,-(sp) 		;passing board as parameter for "scanMov"
+					mov @#Steps,-(sp)		;passing steps as parameter for "scanMov"
+					dec (sp) 				;decrementing steps passed to "scanMov"
+					mov @#Player,-(sp) 		;passing current player as parameter for "scanMov"
+					jsr pc,switchPl 		;inverting current player passed to "scanMov"
+					jsr pc,scanMov 			;calling "scanMov"
+					add #10,sp 				;clearing stack(nse=4, last=winparam)
+					mov #0,-(sp)			;index to identify that we are checking right path(nse=5, last=pathindex)
+					cmp @20(sp),2(sp) 		;checking if WP returned by internal "scanMov" is different from current WP
+					bne chPar 				;if yes - branching to "chWP", otherwise proceeding to "retInPos"
+					mov (sp),2(sp)			;moving path index down the stack
+					tst (sp)+				;clearing stack
+					br retInPos 			;branching to "retInPos"
+
+fMovLP:				tst (sp)+				;clearing stack
+					mov 2(sp),-(sp)			;passing current source as parameter for "canMoveL"
+					mov 2(sp),-(sp) 		;passing board as parameter for "canMoveL"
+					mov @#Player,-(sp) 		;passing original player as parameter for "canMoveL"
+					jsr pc,canMoveL 		;calling "canMoveL"
+					add #4,sp 				;clearing stack
+					cmp #-1,(sp) 			;checking if there are moves on the left path
+					beq retInPos-4			;if no - branching to "retToFL", otherwise - proceeding
+					mov #Board,-(sp)		;passing board as parameter for "movPiece"(3 stack elements, last - dest)
+					mov 6(sp),.+20			;passing current source as parameter for "movPiece"
+					mov 2(sp),.+14			;passing found destination as parameter for "movPiece"
+					jsr r5,movPiece 		;calling "movPiece"
+					.word 0 				;inline parameter for "movPiece"
+					.word 0 				;inline parameter for "movPiece"
+					tst (sp)+ 				;clearing stack(nse=3)
+					mov #0,-(sp)     		;passing output field for "scanMov"
+					mov #Player,-(sp) 		;passing original player as parameter for "scanMov" 
+					mov #Board,-(sp) 		;passing board as parameter for "scanMov"
+					mov @#Steps,-(sp)		;passing steps as parameter for "scanMov"
+					dec (sp) 				;decrementing steps passed to "scanMov"
+					mov @#Player,-(sp) 		;passing current player as parameter for "scanMov"
+					jsr pc,switchPl 		;inverting current player passed to "scanMov"
+					jsr pc,scanMov 			;calling "scanMov"
+					add #10,sp 				;clearing stack(nse=4, last=winparam)
+					mov #1,-(sp)			;index to identify that we are checking left path(nse=5, last=pathindex)
+					cmp @20(sp),2(sp) 		;checking if WP returned by internal "scanMov" is different from current WP
+					bne chPar 				;if yes - branching to "chPar", otherwise proceeding to "retInPos"
+					mov (sp),2(sp)			;moving path index down the stack
+					tst (sp)+				;clearing stack
+					br retInPos 			;branching to "retInPos"
+
+					tst (sp)+ 				;clearing stack
+					br chPar-4 				;branching to "JFMLoop"
+
+retInPos:			mov #Board,-(sp)        ;passing board as parameter for "movPiece"
+					mov 4(sp),.+20			;passing dest as first parameter for "movPiece"
+					mov 10(sp),.+14				;passing source as first parameter for "movPiece"
+					jsr r5,movPiece 		;calling "movPiece"
+					.word 0 				;inline parameter for "movPiece"
+					.word 0					;inline parameter for "movPiece"
+					tst (sp)+ 				;clearing stack
+					mov (sp),2(sp)			;changing position of psth index in stack
+					tst (sp)+   			;clearing stack(nse=3, last=pathindex)
+					cmp (sp)+,#0 			;checking if path is right
+					bne chPar-4 			;if yes proceeding to check left path, otherwise - continue iteration
+					mov #0,-(sp)			;moving junk to the stack
+					br fMovLP				;branching to "fMovLP"
+
+					jmp fMovLoop			;jumping to "fMovLoop"
+
+chPar:				cmp @20(sp),2(sp) 		;checking if current WP is less that gotten from internal "scanMov"
+					blt nParam 				;if yes - branching to "nParam", otherwise proceeding 
+					mov (sp),2(sp) 			;moving path index down the stack
+					tst (sp)+				;clearing stack
+					br retInPos 			;branching to "retInPos"
+
+nParam:				mov 2(sp),@20(sp)		;assigning internal WP into the output field
+					mov (sp),2(sp)	 		;moving path index down the stack
+					tst (sp)+				;clearing stack(nse=4, last=pathindex)
+					mov 2(sp),@14(sp)		;moving destination to the DstPos label
+					mov 6(sp),@12(sp) 		;moving source to the SrcPos label
+					br retInPos 			;branching to "retInPos"
+
+fMovEnd:			add #4,sp				;deletes the count of steps and the copy of the board
+					rts pc 					;returning from subroutine
+
+
+
+;CAN_MOVE_L
+;function checking if the player can move to the left
+;player 2(sp), board 4(sp), source 6(sp)
+canMoveL:   mov #0, -(sp)       ;first vs second check counter (just move vs eat)
+            cmp 4(sp), #1       ;row step
+            beq wLStep  		;check who's the player
+            mov #10, -(sp)      ;row step for Player 1
+            br wLStep+4 		;start checking if the move is possible
+wLStep:     mov #-10, -(sp) 	;row step for Player 2
+		    add #1, 2(sp) 		;adjust the counter
+            mov 6(sp), -(sp)    ;copy player
+            mov 14(sp), -(sp)   ;copy square ID
+            jsr pc, testEdge 	;check if we would cross the top/bottom edge
+            tst (sp)+			;adjust the stack
+            cmp (sp)+, #1       ;check border
+            bne cmlRetN         ;border check failed => return -1
+leEdge:     mov 12(sp), -(sp)   ;check right edge (next 3 lines)
+            bic #177770, (sp) 	
+            cmp (sp)+, #0
+            beq cmlRetN         ;return -1 if the right edge condition is not fulfilled
+            mov (sp), -(sp)     ;add row step for the current player
+            dec (sp)            ;add step to the left
+		    mov 12(sp), -(sp)   ;move board to stack
+            asl 2(sp)           ;multiply possible dest by two
+            add 2(sp), (sp)     ;get the address to check
+            tst @(sp)
+            beq retMoveL        ;if it is 0, return dest
+            cmp @(sp), 12(sp)   ;compare dest contents with player
+            beq cmlRetN-4        ;if the player's piece is there, return -1
+            cmp 6(sp), #2       ;otherwise check iteration number
+            beq cmlRetN-4        ;if it is the second iteration, return -1
+            asr 2(sp)			;adjust the source
+            mov (sp), 14(sp)    ;set new board
+            add 2(sp), 16(sp)   ;set new source
+            add #4, sp 			;adjust the stack
+		    br wLStep+4 		;check if the opponent's piece can be eaten
+		    add #4, sp 			;adjust the stack
+cmlRetN:    add #4, sp 			;adjust the stack
+            mov #-1, 6(sp) 		;return -1
+            rts pc 				;return to the calling function
+retMoveL:   asr 2(sp) 			;adjust the destination
+            add 2(sp), 16(sp)   ;return move
+            add #10, sp         ;adjust stack 
+            rts pc 				;return to the calling function
+
+
+;TEST_EDGE
+;helper function that is used to check if the player is close to the top or bottom of the board and cannot move
+;passed are player ID 4(sp) and square ID 2(sp)
+;returns result in 4(sp)
+;tests if the player is close to the edge of the board
+testEdge:   mov 2(sp), -(sp)	;we'll need to check the square ID
+            bic #177707, (sp)	;we leave only the octal digit that is the last before one
+            cmp 6(sp), #1       ;check if player is 1
+            bne edgePos-6		;if they are not, check the black version
+		    cmp (sp), #0		;otherwise check if the digit that was left is 0
+            beq edgePos+12			;if it is so, the white player cannot move
+            br edgePos 			;if it is not, the edge condition is fulfilled
+		    cmp (sp), #70 		;if the player is player 2, check if the last digit before one is 7
+            beq edgePos+12 		;if it is so, the player cannot move
+edgePos:    mov #1, 6(sp)		;if the player can move, return -1
+            tst (sp)+			;adjust the stack
+            rts pc 				;return to the calling function
+		    mov #-1, 6(sp) 		;if the player cannot move, return -1
+            tst (sp)+			;adjust the stack
+            rts pc 				;return to the calling function
+
+
+
+
+parser:		mov outLen, clen1		;set the length of the string to parse to the length of the received string
+			mov #outStr, str1 		;set the string to be parsed to received string
+			mov #4, clen2 			;set the string for comparison to stop
+			mov #stop, str2
+			mov #-1, -(sp) 			;pass the output field initialized to false to the compStr function
+			jsr pc, compStr			;compare two strings
+			tst (sp)+ 				;test the result
+			beq parTime				;if the string is not stop, try to compare it with time
+			tst clen1 				;otherwise check if there are any characters left
+			beq retStop 			;if there are none, return stop
+			cmpb @str1, #32. 		;if there is a whitespace after stop, return stop
+			beq retStop
+			mov #-1, command 		;if there are other symbols, no command was collected
+			jsr pc, cannotEx		;call cannotEx function
+			rts pc
+
+retStop:	mov #1, command 		;set command to 1 (stop)
+			tst @#gameIsAc 			;check if the game is active
+			beq cannotSt 			;if it is not, you can't stop it
+			jsr pc, stopCo 			;if you can stop the game, call stopCo
+			rts pc
+
+cannotSt:	jsr pc, cannotEx 		;if the game can't be stopped, call cannotEx
+			rts pc
+
+parTime:	mov outLen, clen1 		;try to compare the beginning of the received string with time
+			mov #outStr, str1
+			mov #4, clen2
+			mov #time, str2
+			mov #-1, -(sp)
+			jsr pc, compStr
+			tst (sp)+ 				;check the result 
+			beq parMove				;if the string doesn't begin with time, try to compare it with move
+			tst clen1 				;if this is the end of the string, the command received is time
+			beq retTime
+			cmpb @str1, #32. 		;if the next symbol is a whitespace, the command received is time
+			beq retTime
+			mov #-1, command		;otherwise there is no valid command
+			jsr pc, cannotEx		;call cannotEx
+			rts pc
+
+retTime:	mov #2, command			;set the command to 2(time)
+			tst @#gameIsAc 			;check if the game is active
+			beq cannotTi 			;if it is not, call cannotEx
+			jsr pc, timeCo 			;otherwise print the time left to the player
+			rts pc
+
+cannotTi:	jsr pc, cannotEx
+			rts pc
+
+parMove:	mov outLen, clen1			;compare the start of the received string with move
+			mov #outStr, str1		
+			mov #4, clen2
+			mov #move, str2
+			mov #-1, -(sp)
+			jsr pc, compStr
+			tst (sp)+					;check the result
+			beq parStart				;if the string does not start with move, compare it with start
+			cmpb #32., @str1 			;check if there is a space afterwards
+			bne movFail 				;if there is no space, exit the parser
+			jsr pc, spaces 				;pass all the spaces after that space
+			tst clen1					;if this is the end of the string, no command was collected
+			beq movFail
+			mov #-1, -(sp)				;pass the output field to the getNum command initialized to -1
+			mov #0, command+2 			;set the source field to 0
+			mov #command+2, addrNum		;pass the address of the source field to getNum
+			jsr pc, getNum				;call getNum with those parameters
+			cmp #1, (sp)+ 				;if the received value is not 1, return fail
+			bne movFail
+			cmp command+2, #77 			;otherwise check if the number is between 0 and 77
+			bgt movFail
+			cmp command+2, #0
+			blt movFail
+			cmpb @str1, #32. 			;check if there is a space afterwards
+			bne movFail
+			jsr pc, spaces 				;pass all spaces after that
+			tst clen1
+			beq movFail					;if we've reached the end of the string, return failure
+			mov #-1, -(sp) 				;pass the output field initialized to -1 to getNum
+			mov #0, command+4 			;initialize the destination field to 0
+			mov #command+4, addrNum 	;pass the destination address to getNum
+			jsr pc, getNum 				;call getNum
+			cmp #1, (sp)+ 				;if what is received is not 1, return failure
+			bne movFail 				
+			cmp command+4, #77			;if the number is not between 0 and 77, return failure
+			bgt movFail
+			cmp command+4, #0
+			blt movFail
+			cmp clen1, #0 				;if we've reached the end of the string, return success
+			beq retMove
+			cmpb @str1, #32. 			;if the next symbol is whitespace, return success
+			beq retMove
+movFail:	mov #-1, command
+			jsr pc, cannotEx
+			rts pc
+
+retMove:	mov #3, command 			;set the command to 3 (move)
+			tst @#gameIsAc 				;check if the game is active
+			beq cannotMo 				;if the game is not active, call cannotMo
+			tst currPla 				;check if the current player is human
+			bne cannotMo 				;if it is not so, call cannotMo
+			jsr pc, moveCo 				;otherwise call moveCo
+			rts pc
+
+cannotMo:	jsr pc, cannotEx
+			rts pc
+
+parStart:	mov outLen, clen1			;compare the beginning of the string with start
+			mov #outStr, str1
+			mov #5, clen2
+			mov #start, str2
+			mov #-1, -(sp)
+			jsr pc, compStr
+			tst (sp)+ 					;if the string does not begin with start, return failure
+			beq stFail
+			cmpb #32., @str1 			;if there are no spaces afterwards, return failure
+			bne stFail
+			jsr pc, spaces 				;pass the spaces after that
+			tst clen1 					;if this is the end of the string, return failure
+			beq stFail
+			cmpb @str1, #150 			;if the next symbol is h, set the white player to be human
+			beq humanWh
+			cmpb @str1, #143  			;if the next symbol is c, set the white player to be computer
+			beq compWh
+			br stFail 					;otherwise return failure
+humanWh:	mov #0, command+2
+			br contSt
+compWh:		mov #1, command+2
+contSt:		dec clen1 					;go to the next character in the string
+			inc str1
+			cmpb #32., @str1 			;if this is not a space, return failure
+			bne stFail
+			jsr pc, spaces 				;pass all the spaces this one
+			tst clen1 					;if this is the end of the string, return failure
+			beq stFail 					
+			mov #-2, -(sp) 				;pass -2 in the output field to getNum 
+			mov #0, command+4 			;set the white player time to 0
+			mov #command+4, addrNum 	;pass the address of the white player time to getNum
+			jsr pc, getNum
+			cmp #1, (sp)+ 				;check the result of getNum
+			bne stFail 					;if no number was collected, return failure
+			cmpb @str1, #32. 			;check if the next symbol is a space
+			bne stFail
+			jsr pc, spaces 				;pass all the spaces after this one
+			tst clen1 					;if this is the end of the string, return failure
+			beq stFail
+			cmpb #150, @str1			;set the black player to computer of human according to the next char
+			beq humanBl
+			cmpb #143, @str1
+			beq compBl
+			br stFail 					;if this char is not h or c, return failure
+humanBl:	mov #0, command+6
+			br contSt2
+compBl:		mov #1, command+6
+contSt2:	dec clen1					;go to the next character
+			inc str1
+			cmpb #32., @str1 			;check that it is a whitespace
+			bne stFail
+			jsr pc, spaces				;ignore spaces after this one
+			tst clen1					;if this is the end of the string, return failure
+			beq stFail
+			mov #-2, -(sp)				;call getNum with -2 in the output field
+			mov #0, command+10			;set the time for the black player to 0
+			mov #command+10, addrNum	;pass the address of the black time to getNum
+			jsr pc, getNum
+			cmp #1, (sp)+ 				;check if 1 was returned
+			bne stFail 					;otherwise return parser failure
+			cmp clen1, #0				;if this is the end of the string, return success
+			beq retStart
+			cmpb @str1, #32. 			;if the next symbol is a whitespace, return success
+			beq retStart
+stFail:		mov #-1, command 			;if no command was collected, call cannotEx
+			jsr pc, cannotEx
+			rts pc
+retStart:	mov #4, command				;set the command to 4(start)
+			tst @#gameIsAc				;check if the game is active
+			bne cannotBe 				;if it is, call cannotBe(gin)
+			mov @#command+2, whInst		;pass startCo the parameters of the game
+			mov @#command+6, blInst
+			mov @#command+4, whTime
+			mov @#command+10, blTime
+			jsr pc, startCo
+			rts pc
+
+cannotBe:	jsr pc, cannotEx 			;if the game can't begin now, call cannotEx
+			rts pc
+
+command: .blkw 6 						;the collected command and its arguments
+
+;increases the pointer to the string so that all the whitespaces after the current character are ignored
+
+spaces:		inc clen1
+			dec str1
+spaceL:		dec clen1
+			inc str1
+			tst clen1
+			beq endSp
+			cmpb @str1, #32.
+			beq spaceL
+endSp:		rts pc
+
+;compares two strings (the pointers and the lengths of the strings are passed as global variables, see below)
+compStr:	cmp clen1, clen2 	;if the first string is shorter, return false
+			blt retFalse
+			jsr pc, spaces		;ignore the spaces in the beginning
+			cmp clen2, clen1	;check if the first string is still not shorter than the second
+			bgt retFalse
+cmpLoop:	cmpb @str1, @str2 	;compare the strings
+			bne retFalse
+			inc str2
+			inc str1
+			dec clen1
+			dec clen2
+			tst clen2
+			bne cmpLoop
+retTrue:	mov #1, 2(sp)		;return true(1) if the beginning of the first string equals the second string
+			rts pc
+retFalse:	mov #0, 2(sp)		;return false(0) otherwise
+			rts pc
+
+clen1:		.word 0				;the length of the first string
+clen2:		.word 0				;the length of the second string
+str1:		.word 0 			;the pointer to the first string
+str2:		.word 0 			;the pointer to the second string
+addrNum:	.word 0 			;the address where to put the number that was found in the string
+
+;gets a pointer to the string and the address, if the string starts with a number string, 
+;puts this number as an octal number to this address
+getNum:		inc clen1			;adjust the pointers			
+			dec str1
+			mov 2(sp), -(sp)	;move the parameter describing if an octal (-1) 
+								;or a decimal (-2) number is expected to the stack
+numLoop:	dec clen1			;while all characters are numbers, 
+			inc str1			;add the numbers to the output string and increase the pointer
+			cmp clen1, #0		;exit if the string has ended
+			beq retNum
+			cmpb @str1, #32.	;exit if a whitespace was met
+			beq retNum
+			cmpb @str1, #60
+			blt numFalse
+			cmpb @str1, #71
+			bgt numFalse
+			mov r5, -(sp)
+			mov r4, -(sp)
+			clr r4
+			clr r5
+			movb @str1, r4 		;transform an ascii character into a number
+			sub #60, r4
+			cmp #7, r4
+			bge contNum
+			cmp 4(sp), #-1		;if the number is bigger than 7, but an octal number was expected, return false
+			beq notOct
+contNum:	mov @addrNum, r5	;multiply the number collected by 8 (10 if octal) and add the last digit
+			asl r5
+			asl r5
+			asl r5
+			cmp 4(sp), #-1
+			beq contNum2
+			add @addrNum, r5
+			add @addrNum, r5
+contNum2:	add r4, r5
+			mov r5, @addrNum	;put the result into the provided output variable
+			mov (sp)+, r4 		;return to the registers their values
+			mov (sp)+, r5
+			mov #1, 4(sp)		;set the success/failure output field to success
+			br numLoop
+notOct:		mov (sp)+, r4 		;return to registers their values
+			mov (sp)+, r5
+numFalse:	mov #-1, 4(sp) 		;return false
+retNum:		add #2, sp 			;adjust the stack
+			rts pc
+
+
+
+
+
+
+;Recursive function for scanning through game nodes
+;Output field: 12(sp)
+;Original player: 10(sp)
+;Board: 6(sp)
+;Steps: 4(sp)
+;Current player: 2(sp)
+
+scanMov:			cmp #1,@#timeOut 		;checking if time is out
+					bne .+4 				;if not - branching to recPr
+					rts pc 					;retruning from subroutine
+					mov r4,-(sp)   			;saving r4's content
+					mov 4(sp),-(sp)			;passing current player as parameter for "minOrMax"
+					mov 14(sp),-(sp)		;passing original player as parameter for "minOrMax"
+					jsr pc,minOrMax			;calling "minOrMax"
+					add #4,sp 				;clearing stack
+					cmp r4,#-1 				;checking if we need to find min or max
+					beq scMInit-10 			;branching to "minInit"
+
+					mov (sp)+,r4 			;returning r4 to it's initial value
+					mov #-21,12(sp) 		;initializing output
+					br scMInit 				;branching to "scMInit"
+
+					mov (sp)+,r4 			;returning r4 to it's initial value
+					mov #21,12(sp) 			;initializing output
+
+scMInit:			mov #0,-(sp)			;passing first output field for "endCond"
+					mov #0,-(sp) 			;passing second output field for "endCond"
+					mov 10(sp),-(sp) 		;passing steps as parameter for "endCond"
+					mov 14(sp),-(sp) 		;passing board as parameter for "endCond"
+					mov 12(sp),-(sp) 		;passing current player as parameter for "endCond"
+					jsr pc,endCond 			;calling "endCond"
+					add #6,sp 				;clearing irrelevant stack area
+					cmp #1,2(sp) 			;checking if there is end condition satisfied
+					beq endPutWP 			;if yes - branching to "endPutWP"
+					cmp #2,2(sp) 			;checking if pass cond satisfied
+					beq pVari 				;if yes - branching to "pVari"
+					br scanB         		;branching to "scanB"
+
+pVari:				add #4,sp   			;clearing stack
+					mov #0,-(sp) 			;passing output field for "scanMov"
+					mov 12(sp),-(sp) 		;passing original player for "scanMov"
+					mov 12(sp),-(sp) 		;passing board for "scanMov"
+					mov 12(sp),-(sp) 		;passing steps for "scanMov"
+					dec (sp) 				;decrementing steps passed for "scanMov"
+					mov 12(sp),-(sp) 		;passing current player for "scanMov"
+					jsr pc,switchPl 		;inverting player
+					jsr pc,scanMov 			;calling "scanMov"
+					add #10,sp 				;clearing stack
+					mov (sp),14(sp) 		;changing WinParam
+					tst (sp)+ 				;clearing stack
+					rts pc			 		;returning from subroutine
+
+endPutWP:			mov (sp),16(sp) 		;putting winning parameter into output field
+					add #4,sp 				;clearing irrelevant stack area
+					mov r4,-(sp)			;saving r4's content
+					mov 4(sp),-(sp)			;passing current player as parameter for "minOrMax"
+					mov 14(sp),-(sp)		;passing original player as parameter for "minOrMax"
+					jsr pc,minOrMax 		;calling "minOrMax"
+					add #4,sp 				;clearing stack
+					cmp #-1,r4 				;checking if we counted for original player or not
+					beq negWP 	 			;if not - negate WP
+					mov (sp)+,r4 			;returning r4 to it's initial value
+					rts pc  				;returning from subroutine
+
+negWP:				mov (sp)+,r4 			;returning r4 to it's initial value
+					neg 12(sp) 				;negating output
+					rts pc					;returning from subroutine
+
+		 			jmp scanEnd				;jumping to "scanEnd"
+
+scanB:				add #4,sp 				;clearing stack
+					mov #-1,-(sp)			;creates an iterator to count steps
+					mov 10(sp),-(sp)		;creates a copy of the board address
+					sub #2,(sp)				;sets the current address to the word just before the board for convenient iteration
+
+scanLoop:			cmp #1,@#timeOut 		;checking if time is out
+					bne .+4 				;if no - branching to 'SLCont'
+					br scanB-4 				;otherwise, branching to 'scanEJ'
+					add #2,(sp)				;increments the address in order for it to point to the next square
+					inc 2(sp)				;increments the number of the square (from 0 to 77)
+					cmp 2(sp),#100			;checks if there are any squares left ;should be 77, this is a test version
+					bge scanB-4				;if there are none, ends iteration					
+					cmp @(sp),6(sp)			;does the square contain the token of the player that was passed to the iterator
+					bne scanLoop			;if it doesn't, just continue to iterate over squares
+
+recScan:			mov 2(sp),-(sp)			;passing current source as parameter for "canMoveR"
+					mov 2(sp),-(sp) 		;passing board as parameter for "canMoveR"
+					mov 12(sp),-(sp) 		;passing current player as parameter for "canMoveR"
+					jsr pc,canMoveR 		;calling "canMoveR"
+					add #4,sp 				;clearing stack
+					cmp #-1,(sp) 			;checking if there are moves on the right path
+					beq checkL 				;if no - branching to "checkLeft", otherwise - proceeding
+					mov 14(sp),-(sp)		;passing board as parameter for "movPiece"(3 stack elements, last - dest)
+					mov 6(sp),.+20			;passing current source as parameter for "movPiece"
+					mov 2(sp),.+14			;passing found destination as parameter for "movPiece"
+					jsr r5,movPiece 		;calling "movPiece"
+					.word 0 				;inline parameter for "movPiece"
+					.word 0 				;inline parameter for "movPiece"
+					tst (sp)+ 				;clearing stack(nse=3)
+					mov #0,-(sp)     		;passing output field for "scanMov"
+					mov 20(sp),-(sp) 		;passing original player as parameter for "scanMov" 
+					mov 20(sp),-(sp) 		;passing board as parameter for "scanMov"
+					mov 20(sp),-(sp)		;passing steps as parameter for "scanMov"
+					dec (sp) 				;decrementing steps passed to "scanMov"
+					mov 20(sp),-(sp) 		;passing current player as parameter for "scanMov"
+					jsr pc,switchPl 		;inverting current player passed to "scanMov"
+					jsr pc,scanMov 			;calling "scanMov"
+					add #10,sp 				;clearing stack(nse=4, last=winparam)
+					mov #0,-(sp)			;index to identify that we are checking right path(nse=5, last=pathindex)
+					cmp 24(sp),2(sp) 		;checking if WP returned by internal "scanMov" is different from current WP
+					bne chWP 				;if yes - branching to "chWP", otherwise proceeding to "retPos"
+					mov (sp),2(sp)			;moving path index down the stack
+					tst (sp)+				;clearing stack
+					br retPos 				;branching to "retPos"
+
+checkL:				tst (sp)+ 				;clearing stack
+					mov 2(sp),-(sp)			;passing current source as parameter for "canMoveL"
+					mov 2(sp),-(sp) 		;passing board as parameter for "canMoveL"
+					mov 12(sp),-(sp) 		;passing current player as parameter for "canMoveL"
+					jsr pc,canMoveL 		;calling "canMoveL"
+					add #4,sp 				;clearing stack
+					cmp #-1,(sp) 			;checking if there are moves on the left path
+					beq retPos-6 			;if no - branching to "retToL", otherwise - proceeding
+					mov 14(sp),-(sp)		;passing board as parameter for "movPiece"(3 stack elements, last - dest)
+					mov 6(sp),.+20			;passing current source as parameter for "movPiece"
+					mov 2(sp),.+14			;passing found destination as parameter for "movPiece"
+					jsr r5,movPiece 		;calling "movPiece"
+					.word 0 				;inline parameter for "movPiece"
+					.word 0 				;inline parameter for "movPiece"
+					tst (sp)+ 				;clearing stack(nse=3)
+					mov #0,-(sp)     		;passing output field for "scanMov"
+					mov 20(sp),-(sp) 		;passing original player as parameter for "scanMov" 
+					mov 20(sp),-(sp) 		;passing board as parameter for "scanMov"
+					mov 20(sp),-(sp)		;passing steps as parameter for "scanMov"
+					dec (sp) 				;decrementing steps passed to "scanMov"
+					mov 20(sp),-(sp) 		;passing current player as parameter for "scanMov"
+					jsr pc,switchPl 		;inverting current player passed to "scanMov"
+					jsr pc,scanMov 			;calling "scanMov"
+					add #10,sp 				;clearing stack(nse=4, last=winparam)
+					mov #1,-(sp)			;index to identify that we are checking left path(nse=5, last=pathindex)
+					cmp 24(sp),2(sp) 		;checking if WP returned by internal "scanMov" is different from current WP
+					bne chWP 				;if yes - branching to "chWP", otherwise proceeding to "retPos"
+					mov (sp),2(sp)			;moving path index down the stack
+					tst (sp)+				;clearing stack
+					br retPos 				;branching to "retPos"
+
+					tst (sp)+ 				;clearing stack
+		
+		
+					jmp scanLoop			;jumping to "scanLoop"
+
+retPos:				mov 16(sp),-(sp)        ;passing board as parameter for "movPiece"
+					mov 4(sp),.+20			;passing dest as first parameter for "movPiece"
+					mov 10(sp),.+14			;passing source as first parameter for "movPiece"
+					jsr r5,movPiece 		;calling "movPiece"
+					.word 0 				;inline parameter for "movPiece"
+					.word 0					;inline parameter for "movPiece"
+					tst (sp)+ 				;clearing stack
+					mov (sp),2(sp)			;changing position of path index in stack
+					tst (sp)+   			;clearing stack(nse=3, last=pathindex)
+					cmp (sp)+,#0 			;checking if path is right
+					bne retPos-4 			;if yes proceeding to check left path, otherwise - continue iteration
+					mov #0,-(sp)			;moving junk to the stack
+					br checkL				;branching to "checkL"
+
+chWP:				mov r4,-(sp) 			;saving r4's content(nse=6, last=r4cont)
+					mov 16(sp),-(sp) 		;passing current player as parameter for "minOrMax"
+					mov 26(sp),-(sp) 		;passing original player as parameter for "minOrMax"
+					jsr pc,minOrMax  		;calling "minOrMax"
+					add #4,sp 				;clearing stack
+					cmp #1,r4 				;checking if we need to get maximal WP
+					beq asWP+16				;if yes - branching to "chMax", otherwise proceeding to "chMin"
+
+					mov (sp)+,r4 			;returning r4's content to it's initial value(nse=5, last=pathindex)
+					cmp 24(sp),2(sp) 		;cheking if current WP is greater that gotten from internal "scanMov"
+					bgt asWP 				;if yes - branching to "asWP", otherwise proceeding 
+					mov (sp),2(sp) 			;moving path index down the stack
+					tst (sp)+				;clearing stack
+					br retPos 				;branching to "retPos"
+
+asWP:				mov 2(sp),24(sp)		;assigning internal WP into the output field
+					mov (sp),2(sp)	 		;moving path index down the stack
+					tst (sp)+				;clearing stack(nse=4, last=pathindex)
+					br retPos 				;branching to "retPos"
+
+					mov (sp)+,r4 			;returning r4's content to it's initial value(nse=5, last=pathindex)
+					cmp 24(sp),2(sp) 		;cheking if current WP is less that gotten from internal "scanMov"
+					blt asWP 				;if yes - branching to "asWP", otherwise proceeding 
+					mov (sp),2(sp) 			;moving path index down the stack
+					tst (sp)+				;clearing stack
+					br retPos 				;branching to "retPos"
+
+scanEnd:			add #4,sp				;deletes the count of steps and the copy of the board
+					rts pc 					;returning from subroutine
+
+
+
+
+welcMes:		.ascii <Welcome to 341012706 and 336455308 checkers game!\r\n\n$ >
+.even
+gameIsAc:		.word 0
+
+whString:		.ascii <White >
+.even
+blString:		.ascii <Black >
+.even
+cPString:		.ascii <\nCurrent Player: >
+.even
+nlChar:			.ascii <\r\n\n$ >
+.even
+whInst:			.word 0 			;0 - human, 1 - computer
+
+blInst:			.word 0
+
+currPla:		.word 0				;0 - human, 1 - computer
+
+tSrc:			.word 0
+
+tDst:			.word 0
+
+tWinPar:		.word 0
+
+cmtStri:		.ascii <Computer move took >
+.even
+mvOutN:			.ascii <                                                  >
+.even
+huTiLos:		.ascii <Human is out of time. Game over.\r\n\n\n\n\n$ >
+.even
+hmtStri:		.ascii <Human move took >
+
+				.ascii < >
+.even
+
+
+;"movPiece" function, does a move supported with a given source and destination
+;first parameter[2(sp) - at the start of subroutine] - adress of the board
+;second parameter - source point(inline)
+;third parameter - destination point(inline)
+
+movPiece:			mov (r5)+,-(sp)					;fetching second parameter
+					mov (r5)+,-(sp)					;fetching third parameter
+					mov (sp),-(sp)					;creating stack variable for calculating diagonal midpoint
+					add 4(sp),(sp)					;adding source and destination indexes
+					asr (sp)						;dividing sum of source and destination indexes by two
+					bcc retMP+6 					;if number is divisible by two - checking capture(or reverse capture) move
+
+					tst (sp)+						;if number is no divisible by two - checking simple move, getting rid of calculated sum
+					asl (sp)						;multiplying by two destination index
+					asl 2(sp)						;multiplying by two source index
+					add 6(sp),(sp)					;adding adress of the "Board" to the destination index(multiplied)
+					add 6(sp),2(sp)					;adding adress of the "Board" to the source index(multiplied)
+					mov @2(sp),@(sp)				;moving source content to the destination
+					mov #0,@2(sp)					;clearing the source
+
+retMP:				tst (sp)+						;clearing the stack
+					tst (sp)+						;clearing the stack
+					rts r5							;returning from the subroutine using connection register(r5)
+
+					asl 2(sp)						;multiplying by two destination index
+					asl 4(sp)						;multiplying by two source index
+					asl (sp)						;multiplying by two midpoint index
+					add 10(sp),2(sp)				;adding adress of the "Board" to the destination index(multiplied)				
+					add 10(sp),4(sp)				;adding adress of the "Board" to the source index(multiplied)
+					add 10(sp),(sp)					;adding adress of the "Board" to the midpoint index(multiplied)
+					mov @4(sp),@2(sp)				;moving source content to the destination
+					mov #0,@4(sp)					;clearing the source
+					cmp #0,@(sp)					;checking if midpoint contains any checker
+					bne eat 						;if it does - branching to the "eat", if doesn't - proceeding with "revEat"(reverse eat)
+
+					cmp #1,@2(sp)					;checking if checker that moved was white
+					beq eat-6						;if yes, that branching to the "bRevEat"(reverse eating of the black checker), if no - "wRevEat"
+
+					mov #1,@(sp)					;moving white checker to the midpoint
+					tst (sp)+						;clearing stack variable which has contained adress of the midpoint
+					jmp retMP						;jumping to the return from the subroutine procedure
+
+					mov #2,@(sp)					;moving black checker to the midpoint
+					tst (sp)+						;clearing stack variable which has contained adress of the midpoint
+					jmp retMP 						;jumping to the return from the subroutine procedure
+
+eat:				mov #0,@(sp) 					;clearing midpoint
+					tst (sp)+						;clearing stack variable which has contained adress of the midpoint
+					jmp retMP 						;jumping to the return from the subroutine procedure	
+
+
+
+;does not recieve parameters
+timeCo:				mov r0,-(sp)
+					mov r2,-(sp) 			;saving r2's content 
+					mov #numStri,r2 		;moving address of string with nubmer to r2
+					mov r2,-(sp) 			;passing string adress as parameter for 'numToS'
+					mov @#timer,-(sp)		;passing quotient from division as parameter for 'numToS'
+					jsr pc,numToS 			;calling 'numToS'
+					add (sp),r2 			;adding number length to r3
+					mov (sp),r0 			;moving nubmer length to r2
+					add #2,r0 				;incrementing r2
+					add #4,sp 				;clearing the stack
+					movb #56,@r2 			;moving '.' char to string place defined with r3
+					inc r2 					;incrementing string iterator
+					mov r2,-(sp) 			;passing string adress as parameter for 'numToS'
+					mov @#rateCoun,-(sp) 	;passing remainder as parameter for 'numToS'
+					jsr pc,numToS			;calling 'numToS'
+					add #4,sp 				;clearing the stack
+					mov #13.,len 			;moving 13 to 'len'
+					mov #tLStri,buf 		;moving 'tLStri' adress to 'buf'
+					jsr pc,print1 			;calling 'print1'
+					mov r0,len 				;moving r2's content to 'len'
+					mov #numStri,buf 	 	;moving 'numStri' adress to 'buf'
+					jsr pc,print1 			;calling 'print1'
+					mov #12,len 			;moving 12 to 'len'
+					mov #secStri,buf 		;moving 'secStri' adress to 'buf'
+					jsr pc,print1 			;calling 'print1'
+					mov #5.,len
+					mov #nlChar,buf
+					jsr pc,print1
+					mov (sp)+,r2 			;returning r3's content
+					mov (sp)+,r0 			;returning r1's content
+					rts pc 					;returning from subroutine
+
+
+;2(sp) - number | output field for length
+;4(sp) - adress of the output string 
+numToS:				mov r0,-(sp) 			;saving r0's content
+					mov r1,-(sp)			;saving r1's content
+					mov r2,-(sp) 			;saving r2's content
+					mov 12(sp),r2 			;moving adress of output string to r2
+					mov 10(sp),r1 			;moving number to r1
+					mov #0,r0				;clearing r0
+					div #10.,r0 			;dividing passed number by 10.
+					add #60,r1 				;converting remainder into ascii char
+					movb r1,@r2 			;moving ascii char(last digit of the number) to the string 
+					inc r2 					;incrementing string iterator 	
+					mov #1, 10(sp) 			;moving length output on the place of passed number
+					tst r0 					;checking if quotient is zero
+					beq gotRevS 			;if yes - branch to 'gotRevS'(got reverted string)
+
+numStep:			mov r0, -(sp) 			;otherwise, continue by saving quotient in stack
+					inc 12(sp) 				;incrementing length value
+					mov (sp)+,r1 			;moving current number to r1
+					mov #0,r0
+					div #10.,r0 			;dividing saved quotient by 10.
+					add #60,r1 				;converting remainder into ascii char
+					movb r1,@r2 			;moving ascii char to the string
+					inc r2 					;incrementing string iterator
+					tst r0 					;checking if new quotient is zero
+					bne numStep 			;if no - repeat operations braching to 'numStep'
+
+gotRevS:			mov (sp)+,r2 			;otherwise, continue with returning r2's content
+					mov (sp)+,r1 			;returning r1's content
+					mov (sp)+,r0 			;returning r0's content
+					mov 4(sp),-(sp) 		;passing adress of the string as parameter for 'invStr'
+					mov 4(sp),-(sp)			;passing string length as parameter for 'invStr'
+					jsr pc,invStr 			;inverting the string by calling 'invStr'
+					add #4,sp 				;clearing the stack
+					rts pc 					;returning from subroutine
+
+
+
+;2(sp) - length of the string 
+;4(sp) - adress of the string 
+invStr:				cmp 2(sp),#1			;checking if string length is 1	
+					bne invSCont 			;if no - brach to 'invSCont'
+					rts pc 					;otherwise, return from subroutine
+invSCont:			mov r0,-(sp) 			;saving r0's content
+					mov r1,-(sp)			;saving r1's content
+					mov r2,-(sp) 			;saving r2's content
+					mov r3,-(sp) 			;saving r3's content 
+					mov 12(sp),r3 			;moving string length to r3
+					asr r3 					;dividing length by 2
+					mov 14(sp),r1 			;moving adress of the string to r1
+					mov 14(sp),r2 			;moving adress of the string to r2
+					add 12(sp),r2 			;adding string length to r2
+					sub #1,r2 				;subtracting 1 from r2
+				
+invLoop: 			movb @r1,r0 			;moving char from fisrt half of the string to r0
+					movb @r2,@r1 			;moving char from the second half to first half
+					movb r0,@r2 			;moving char from the first half to the second half
+					inc r1 					;incrementing r1
+					dec r2 					;decrementing r2
+					dec r3 					;decrementing r3
+					bne	invLoop 			;if r3 is not zero - branching to 'invLoop'
+					mov (sp)+,r3 			;otherwise, continue with returning r3's content
+					mov (sp)+,r2 			;returning r2's content
+					mov (sp)+,r1 			;returning r1's content
+					mov (sp)+,r0 			;returning r0's content
+					rts pc  				;returning from subroutine
+
+
+
+
+tLStri:				.ascii <\r\nTime left: >
+.even
+;empty(filled with whitespaces) string 50 chars long
+numStri:			.ascii <                                                  >
+.even
+secStri:			.ascii < seconds\r\n>		
+					.ascii < >
+
+.even
+
+
+
+;END_COND
+;receives: 6(sp) steps, 4(sp) board by address, 2(sp) current player
+;and the following output fields: 12(sp) stop (1)/ continue (0) / pass (2), 10(sp) WP in case of a stop
+
+endCond:    mov #0,12(sp)           ;intitializing output field
+            mov #0,-(sp)            ;passing output field for "iterator"
+            mov 6(sp),-(sp)         ;passing board as parameter for "iterator"
+            mov 6(sp),-(sp)         ;passing current player as parameter for "iterator"
+            mov #anyPiece,-(sp)     ;passing "anyPiece" as parameter for "iterator"
+            jsr pc,iterator         ;calling "iteartor"
+            add #6,sp               ;clearing stack
+            cmp (sp)+,#-1           ;checking if there pieces on the board for current player
+            beq retLos+16           ;if yes - braching to "chCont1", otherwise - proceeding to "retLos"
+
+retLos:     mov #1,12(sp)           ;passing stop flag into output field
+            mov #-20,10(sp)         ;passing relevant WP into output field
+            rts pc                  ;returning from subroutine
+
+		    mov #0,-(sp)            ;passing output field for "iterator"
+            mov 6(sp),-(sp)         ;passing board as parameter for "iterator"
+            mov 6(sp),-(sp)         ;passing current player as parameter for "iterator"
+            jsr pc,switchPl         ;inverting player passed to iterator
+            mov #anyPiece,-(sp)     ;passing "anyPiece" as parameter for "iterator"
+            jsr pc,iterator         ;calling "iteartor"
+            add #6,sp               ;clearing stack
+            cmp (sp)+,#-1           ;checking if there pieces on the board for opp of current player
+            beq retWin+16             ;if yes - branching to "chCont2", otherwise proceeding to "retWin"
+
+retWin:     mov #1,12(sp)           ;passing stop flag into output field
+            mov #20,10(sp)          ;passing relevant WP into output field
+            rts pc                  ;returning from subroutine
+
+		    mov #0,-(sp)            ;passing output field for "iterator"
+            mov 6(sp),-(sp)         ;passing board as parameter for "iterator"
+            mov 6(sp),-(sp)         ;passing current player as parameter for "iterator"
+            mov #anyMove,-(sp)      ;passing "anyMove" as parameter for "iterator"
+            jsr pc,iterator         ;calling "iteartor"
+            add #6,sp               ;clearing stack
+            cmp (sp)+,#-1           ;checking if there are moves on the board for current player
+            beq jToWin+6             ;if yes - branching to "chCont3", otherwise proceeding to "rWPBoard"
+            mov #0,-(sp)            ;passing output field for "iterator"
+            mov 6(sp),-(sp)         ;passing board as parameter for "iterator"
+            mov 6(sp),-(sp)         ;passing current player as parameter for "iterator"
+            jsr pc,switchPl         ;inverting player passed to iterator
+            mov #anyMove,-(sp)      ;passing "anyMove" as parameter for "iterator"
+            jsr pc,iterator         ;calling "iteartor"
+            add #6,sp               ;clearing stack
+            cmp (sp)+,#-1 			;checking if there are moves for current player's opponent
+            bne retPasP+10 			;if no - branching to "rWPBoard"
+            tst 6(sp)
+            bne retPasP
+            br retPara
+retPasP:    mov #2,12(sp) 			;passing pass flag to output
+            rts pc 					;returning from subroutine
+
+		    mov #1,12(sp)           ;moving stop flag to the output
+            mov r4,-(sp)            ;saving r4's content
+            mov 6(sp),-(sp)         ;passing board as parameter for "calcWP"
+            mov 6(sp),-(sp)         ;passing current player as parameter for "calcWP"
+            jsr pc,calcWP           ;calling "calcWP"
+            add #4,sp               ;clearing stack
+            cmp r4,#0               ;comparing "calcWP" output with 0
+            bgt jToWin              ;if greater - branch to "jToWin"
+            blt jToWin-6              ;less - branch to "jToLos"
+            mov r4,12(sp)           ;equal - pass r4's content to output
+            mov (sp)+,r4            ;return r4's content
+            rts pc                  ;return from subroutine
+ 
+	        mov (sp)+,r4            ;return r4's content 
+            jmp retLos              ;jump to "retLos"
+
+jToWin:     mov (sp)+,r4            ;return r4's content 
+            jmp retWin              ;jump to "retWin"
+
+		    tst 6(sp)               ;checking if number of steps is zero 
+            beq retPara             ;if yes - branching to "retPara"
+            mov #0,12(sp)           ;passing continue flag into output
+            rts pc                  ;otherwise return from subroutine
+
+retPara:    mov #1,12(sp)           ;moving stop flag to the output
+            mov r4,-(sp)            ;saving r4's content
+            mov 6(sp),-(sp)         ;passing board as parameter for "calcWP"
+            mov 6(sp),-(sp)         ;passing current player as parameter for "calcWP"
+            jsr pc,calcWP           ;calling "calcWP"
+            add #4,sp               ;clearing stack
+            mov r4,12(sp)           ;putting r4's content into output field
+            mov (sp)+,r4            ;returning r4's initial content
+            rts pc                  ;returning from subroutine
+
+
+
+
+
+;initialization of the board
+;does not recieve parameters
+
+inBoard:	mov #-1,-(sp) 				;creates an iterator to count steps
+			mov #Board,-(sp) 			;creates a copy of play board
+			mov #orBoard,-(sp) 			;creates a copy of starting position board
+			sub #2,2(sp) 				;sets the current address to the word just before the play board
+			sub #2,(sp) 				;sets the current address to the word just before the starting board
+			add #2,2(sp) 				;incrementing adress of processed field
+			add #2,(sp) 				;incrementing adress of processed field
+			inc 4(sp) 					;incrementing number of the square
+			cmp 4(sp),#100 				;checking if there are still squares to iterate over them
+			bge .+12 					;if no - branch to 'inedB'
+			mov @(sp),@2(sp) 			;otherwise - move token from starting to play board
+			br .-34			 		;branch to 'bInLoop'
+			add #6,sp 					;clearing stack
+			rts pc 						;returning from subroutine
+
+
+;initialization of the board
+;does not recieve parameters
+cpyToT:		mov #-1,-(sp) 				;creates an iterator to count steps
+			mov #Board,-(sp) 			;creates a copy of play board
+			mov #temBoa,-(sp) 			;creates a copy of starting position board
+			sub #2,2(sp) 				;sets the current address to the word just before the play board
+			sub #2,(sp) 				;sets the current address to the word just before the starting board
+			add #2,2(sp) 				;incrementing adress of processed field
+			add #2,(sp) 				;incrementing adress of processed field
+			inc 4(sp) 					;incrementing number of the square
+			cmp 4(sp),#100 				;checking if there are still squares to iterate over them
+			bge .+12 					;if no - branch to 'inedB'
+			mov @2(sp),@(sp) 			;otherwise - move token from starting to play board
+			br .-34			 		;branch to 'bInLoop'
+			add #6,sp 					;clearing stack
+			rts pc 						;returning from subroutine
+
+
+;initialization of the board
+;does not recieve parameters
+cpyFrT:		mov #-1,-(sp) 				;creates an iterator to count steps
+			mov #Board,-(sp) 			;creates a copy of play board
+			mov #temBoa,-(sp) 			;creates a copy of starting position board
+			sub #2,2(sp) 				;sets the current address to the word just before the play board
+			sub #2,(sp) 				;sets the current address to the word just before the starting board
+			add #2,2(sp) 				;incrementing adress of processed field
+			add #2,(sp) 				;incrementing adress of processed field
+			inc 4(sp) 					;incrementing number of the square
+			cmp 4(sp),#100 				;checking if there are still squares to iterate over them
+			bge .+12 					;if no - branch to 'inedB'
+			mov @(sp),@2(sp) 			;otherwise - move token from starting to play board
+			br .-34			 		;branch to 'bInLoop'
+			add #6,sp 					;clearing stack
+			rts pc 						;returning from subroutine
+
+init_pr:	mov #input, @#60			;initialize the interrupts for input/output mode
+			mov #200, @#62
+			mov #output, @#64 			
+			mov #200, @#66
+			mov #print, @#20 			
+			mov #200, @#22
+			mov #buffer, in 			;initialize the keyboard's pointer and set it to the start of buffer
+			mov #buffer, out 			;initialize the printer's pointer and set it to the start of buffer
+			clr char_count				;set the number of characters that were received but not printed to 0
+			clr iot_count 				;set the number of characters received from user to 0
+			mov #100, @#tps 			;enable the printer
+			mov #outStr, strpoint 		;initialize the pointer to the string being collected from user
+			rts pc
+
+
+switchPr:	mov #printc, @#20			;initialize the interrupts for printing mode
+			mov #200, @#22
+			mov #printc, @#64			
+			mov #200, @#66
+			mov #100, @#tps 			;enable the printer
+			rts pc
+
+emt3:		mov #100, @#tks 			;disable the keyboard
+			jsr pc, mainpr
+			mov #input, @#60 			;set the interrupts to i/o mode
+			mov #200, @#62
+			mov #output, @#64
+			mov #200, @#66
+			mov #print, @#20
+			mov #200, @#22
+			mov #101, @#tks 			;enable the keyboard
+			mov #100, @#tps 			;enable the printer
+			mov #outStr, strpoint 		;initialize the pointer to the string being collected from user
+			clr char_count 				;set the number of characters received from user but not printed to 0
+			clr iot_count 				;set the number of characters received from user to 0
+			bis #1, @#tks
+			rti
+
+input:		movb @#tkb, @in 			;move the received character to buffer
+			inc in 						;increase pointer to buffer
+			inc char_count 				;increase the number of received characters
+			cmpb @#tkb, #8. 			;check if a backspace symbol was received
+			bne notDel 					;if this is not a backspace, go to notDel
+			cmp iot_count, #0 			;otherwise check if any characters were already collected
+			bne contDel 				;if there aren't any characters available, move to contDel
+			dec in 						;decrease the pointer
+			dec char_count 				;decrease the number of collected (but not printed) characters
+			bis #1, @#tks
+			br contIn 					
+contDel:	movb #32., @in 				;add whitespace to buffer
+			inc in 						;increase the pointer to buffer
+			inc char_count 				;increase the number of collected characters
+			movb #8., @in 				;move a backspace symbol to buffer
+			inc in 					 	;increase the pointer to the buffer
+			inc char_count 				;increase the number of collected characters
+			sub #2, iot_count 			;decrease the number of characters in the output string
+			dec strpoint 				;decrease the pointer to the output string
+			br contIn 					
+notDel:		movb @#tkb, @strpoint 		;add the collected symbol to the output string
+			inc strpoint 				;increase the pointer
+contIn:		cmp char_count, #1 			;check if the number of collected symbols is less than 1
+			blt .+10 					;if it is, leave the interrupt
+			inc iot_count				;otherwise increase the number of the collected symbols
+			iot 						;go to the iot trap
+			rti
+
+outEx:		bis #1, @#tks
+			rtt
+output:		dec char_count 				;decrease the number of characters to print
+			cmp char_count, #0 			;compare the number of characters with 0
+			beq outEx 					;if it is 0, exit the interrupt
+
+print:		cmpb #13., @out 			;compare the received character with carriage return
+			beq buffEnd 				;if this is a carriage return symbol, stop collecting the input 
+			;cmp iot_count, #50.			;check the length of the buffer
+			;bgt buffEnd 				;if 50 symbols were collected, stop collecting the input
+			movb @out, @#tpb 			;send the symbol to printer
+			inc out 					;increase the pointer
+			rti
+
+buffEnd:	mov #buffer, in 			;reset the input buffer
+			mov #buffer, out 			;reset the output buffer
+			mov iot_count, outLen 		;move the number of collected symbols to outLen
+			dec outLen 					;adjust the number of collected symbols
+			clr char_count 				;set the number of characters collected by keyboard to 0
+			clr iot_count				;set the number of printed characters to 0 
+			emt 3 						;switch to the no-input mode
+			rti
+
+strpoint:	.word 0
+
+mainpr:		mov #printc, @#20			;iot trap initialization
+			mov #200, @#22
+			mov #printc, @#64			;printer interrupt init
+			mov #200, @#66
+			mov #100, @#tps				;IE enable
+			cmp outLen, #0				;if there are any collected symbols, parse them
+			beq .+10						;if there aren't any, return to the i/o mode
+			jsr pc, parser 	
+			rts pc
+			mov #4, len
+			mov #nl, buf
+			jsr pc, print1			
+			rts pc
+
+print1:		mov buf, -(sp)				;send the parameters to printer
+			mov len, -(sp)
+			jsr pc, printbuf			;call the printer
+			add #4, sp					;stack restore
+w_loop:		tstb @#tps					;perform busy wait
+			bpl w_loop
+			rts pc
+
+printbuf:	tst busy					;wait for the printer to be ready
+			bgt printbuf
+			mov #1, busy 				
+			mov 4(sp), pointer			;initialize the pointer to the string
+			mov 2(sp), count 			;initialize the number of characters to print
+			iot 						;call the iot
+			rts pc
+
+printc:		tst count 					;check if there are characters left				
+			ble sof 					;if there are none, exit
+			movb @pointer, @#tpb 		;otherwise send the character to printer
+			inc pointer 				;increase the pointer to the string
+			dec count 					;decrease the number of characters to print
+			rti
+
+sof:		clr busy 					;exit the printer
+			rti
+
+;;printer global variables
+
+len:	.word 0							;the length of the string to print
+buf:	.word 0							;the address of the string to print
+nl:		.ascii <\r\n$ >					;newline
+.even
+pointer: .blkw 1 						;the pointer to the character being printed
+count: .word 0							;the number of symbols to be printed
+busy: .word 0 							;the state of the printer
+;;io mode global variables
+char_count:	.blkw 1						;the number of characters collected by keyboard
+iot_count:	.blkw 1						;the number of printed characters
+in:			.blkw 1 					;the input pointer to buffer string
+out:		.blkw 1 					;the output pointer to buffer string
+buffer:		.blkw 200. 					;symbols to be printed
+
+outLen:	.word 1 						;the length of output
+outStr: .blkw 25. 						;the string to be printed
+
+
+
+;times are given in common area
+;4(sp) - white player kind(0 - human, 1 - computer)		;;;
+;2(sp) - black player kind
+startCo:		mov @#blTime,-(sp) 				;saving black's time
+				mov @#whTime,-(sp) 				;saving white's time
+				sub #1,@#blTime 				;subtracting 1 from bt
+				sub #1,@#whTime 				;subtracting 1 from wt
+				mov #0,@#tks 					;disabling input
+				jsr pc,switchPr 				;switching print mode
+				mov #25.,len 					;moving sNGStr length to len
+				mov #sNGStr,buf 				;moving sNGStr to buf
+				jsr pc,print1 					;printing sNGStr
+				mov #16.,len 					;moving wNotif length to len
+				mov #wNotif,buf 				;moving wNotif to buf
+				jsr pc,print1 					;printing wNotif
+				cmp @#whInst,#0 				;checking if white player is human
+				bne pCompuW 					;if no - branching to pCompW
+				mov #5.,len 					;moving humStri length to len
+				mov #humStri,buf 				;moving humStri to buf
+				jsr pc,print1 					;printing humStri
+				br .+22 						;proceeding to printing withStr
+pCompuW:		mov	#8.,len 					;moving comStri length to len
+				mov #comStri,buf 				;moving comStri to buf
+				jsr pc,print1 					;printing comStri
+				mov #6.,len 					;moving withStr length to len
+				mov #withStr,buf 				;passing withStr
+				jsr pc,print1					;printing withStr
+				mov #secForP,-(sp) 				;passing output string for numToS
+				mov 2(sp),-(sp) 				;moving seconds for white player as param
+				jsr pc,numToS 					;number of white seconds into string
+				mov (sp)+,len 					;passing len from output into len
+				mov #secForP,buf  				;passing secForP
+				tst (sp)+ 						;clearing stack
+				jsr pc,print1 					;printing seconds string
+				tst (sp)+ 	 					;clearing stack
+pBPla:			mov #20.,len  			 		;passing secPMStr len
+				mov #secPMStr,buf 				;passing secPMStr
+				jsr pc,print1	 				;printing end of seconds statement string
+				mov #16.,len 			 		;passing bNotif len
+				mov #bNotif,buf 	 			;passing bNotif
+				jsr pc,print1 					;printing starting notification about black player
+				cmp @#blInst,#0 				;checking if black player is human
+				bne pCompuB 		  			;if no - branching to pCompuB
+				mov #5.,len  					;passing humStri len
+				mov #humStri,buf 				;passing humStri
+				br .+16 						;branching to .+16
+pCompuB:		mov	#8.,len 					;passing comStri len
+				mov #comStri,buf 				;passing comStri
+				jsr pc,print1   				;printing computer or human string
+				mov	#6.,len 		 			;passing withStr len
+				mov #withStr,buf 				;passing withStr
+				jsr pc,print1 		 			;printing withStr
+				mov #secForP,-(sp) 				;passing output for numToS
+				mov 2(sp),-(sp) 	 			;passing number
+				jsr pc,numToS 					;calling numToS
+				mov (sp)+,len 			 		;passing output to len
+				add #4,sp 						;clearing stack
+				mov #secForP,buf 				;passing secForP
+				jsr pc,print1		 			;printing seconds for player
+				mov #20.,len 					;passing secPMStr len 		
+				mov #secPMStr,buf 				;passing secPMStr
+				jsr pc,print1 					;printing secPMStr
+				mov #1,gameIsAc 				;change game activeness flag to active
+				rts pc 							;returning from subroutine
+
+
+
+
+;parser constant area
+stop:		.ascii <stop>
+.even
+time:		.ascii <time>
+.even
+move:		.ascii <move>
+.even
+start:		.ascii <start>
+.even
+;end of parser constant area
+
+blTime:				.word 0					;time of black
+
+whTime:				.word 0					;time of white
+
+timer:				.word 0		 			;initialized to black or white time depending on the move parity
+
+timeOut:			.word 0					;'1' - time is out, '0' - time is not out
+
+rateCoun:			.word 0
+
+;inittialization of timer and player's time limits is going to processed in 'top level' functions
+;all inputs gotten from user are saved in global variables proceeding multiplication by rate procedure
+
+;clock interrupt handler
+
+clock:				tst @#timeOut 			;checking if time is out
+					beq .+4 			 	;if no - branching to .+4
+					rti 					;returning from interrupt
+					tst @#rateCoun 			;checking if rateCoun is 0
+					beq .+10  				;if yes - branching to .+10
+					dec @#rateCoun 			;decrementing rateCoun
+					rti 					;returning from interrupt
+					tst @#timer				;checking if the time left is zero
+					beq riseTO				;if it is zero - change 'timeOut' value to '1'
+					dec @#timer 			;decrementing timer
+					mov @#rate,rateCoun 	;moving rate to rateCoun
+					rti 					;otherwise return from the interruption hander
+riseTO:				mov #1, @#timeOut		;rise the 'timeOut'
+					rti 					;return from interruption handler 
+
+
+
+
+cExStriB:		.ascii <\r\nCannot execute ">
+.even
+cExStriE:		.ascii <".\r\n\n$ >
+.even 
+emtHand:		mov (sp),-(sp) 				;saving adress from which emt was called+2
+				sub #2,(sp) 				;subtracting 2 from adress of emt call+2
+				mov @0(sp),(sp) 			;moving machine code to stack
+				bic #177400,(sp) 			;getting lower part of machine code
+				asl (sp) 					;mul by 2 param
+				add #emtTab,(sp) 			;adding gotten param to emtTab
+				mov @0(sp),(sp) 			;moving word by gotten adress to stack
+				jmp @(sp)+					;jumping to this word
+
+
+emtTab:			.word emt0
+				.word emt1
+				.word emt2
+				.word emt3
+
+emt2:			mov @#stJero,sp
+				jmp stDataCl
+
+
+emt0:			mov @#stJero,sp
+				jmp backFEmt
+
+emt1:			mov @#stJero,sp
+				jmp gameLb	
+
+
+sNGStr:			.ascii <\r\n\nStarting a new game\r\n\n>
+.even
+wNotif:			.ascii <White player is >
+.even
+bNotif:			.ascii <Black player is >
+.even
+secForP:		.ascii <                                                  >
+.even
+secPMStr: 		.ascii < seconds per move\r\n\n>
+.even
+withStr:		.ascii < with >
+.even
+humStri:		.ascii <Human>
+.even
+comStri:		.ascii <Computer>
+.even
+
+bLayO:			.ascii <\n\nBoard layout:\r\n\n>
+.even
+
+;;BOARD PRINTING FUNCTION;;
+printB:		mov #18.,len 		;print the board layout message
+			mov #bLayO,buf
+			jsr pc,print1
+			mov #80., len 		;pass the length of the board the printer
+			mov #buf1, buf 		;pass the address of the board string to the printer
+			jsr pc, boardToS	;convert the board to string
+			jsr pc, print1 		;send the board string to printer
+			rts pc
+
+;;END OF THE BOARD PRINTING FUNCTION;;
+
+
+;;end of printer global variables
+
+
+;;END OF PRINTER;;
+
+;;CONVERTING THE BOARD INTO STRING;;
+
+boardToS:	mov #buf1, -(sp)		;move the address of the buffer to stack
+			sub #1, (sp)
+			mov #-1, -(sp)			;ititialize the counter
+			mov #Board,-(sp)		;move the board address to the stack
+			sub #2, (sp)			
+BTSLoop:	inc 2(sp)
+			mov 2(sp), -(sp)
+			cmp #0, 4(sp)
+			beq contBTS
+			cmp #100, 4(sp)			;check if the end of the board was reached
+			beq stopBTS				;if it is so, exit from the function
+			bic #177770, (sp)
+			cmp (sp), #0
+			bne contBTS
+			inc 6(sp)
+			movb #13., @6(sp)		;add new line
+			inc 6(sp)
+			movb #10., @6(sp)
+contBTS:	tst (sp)+
+			add #2, (sp)			;otherwise increment the address on the board
+			add #1,4(sp)			;increment the address in the buffer
+			;inc 2(sp)				;increment the counter
+			cmp @(sp), #0			;check if the word of the board is 0	
+			beq .+32				;if it is so, append underscore to the string
+			cmp @(sp), #1			;check if the current word on the board is 1
+			beq .+12				;if it is so, append W to the string
+			movb #102, @4(sp) 		;append B
+			br BTSLoop
+			movb #127, @4(sp)		;append W
+			br BTSLoop
+			movb #137, @4(sp)		;append underscore
+			br BTSLoop
+stopBTS:	inc 6(sp)
+			movb #13., @6(sp)		;add new line
+			inc 6(sp)
+			movb #10., @6(sp)
+			add #10, sp 			;adjust the stack
+			rts pc
+
+buf1:		.blkw 80.
+
+
+;;END OF THE BOARD CONVERSION;;
+
+
+
+
+wPlaWP:			.ascii <\r\n\nWP for white player is >
+.even
+bPlaWP:			.ascii <\r\n\nWP for black player is >
+.even
+WPStri:			.ascii <                                                  >
+.even
+wPVic:			.ascii <\r\nWhite player wins!\r\n\n\n$ >
+.even
+bPVic:			.ascii <\r\nBlack player wins!\r\n\n\n$ >
+.even
+drawStri:		.ascii <\r\n\nIt's a tie! Game over.\r\n\n\n\n$ >
+.even
+
+
+;CALC_WP
+
+calcWP:     mov #0, -(sp)		;create a field for the iterator's output
+			mov 6(sp), -(sp)	;copy board to pass it to the iterator
+			mov 6(sp), -(sp)	;copy player to pass it to the iterator
+			mov #addOne, -(sp)	;pass this function to the iterator
+			jsr pc, iterator 	;go to the iterator with all that stuff
+			mov 6(sp), r4		;put the returned number (the quantity of the player's pieces) into the register
+			mov #0, 6(sp)		;set the output field to 0 again
+			cmp 2(sp), #1		;change the player that is passed to the iterator (next 4 lines)
+			beq .+12		
+			mov #1, 2(sp)
+			br calcOpp			
+			mov #2, 2(sp)		
+calcOpp:	jsr pc, iterator	;run the iterator with the opponent as player
+			sub 6(sp), r4		;subtract the result from r4
+			add #10, sp 		;adjust the stack
+			rts pc 				;return to main
+
+;ITERATOR
+
+;iterates over a player's pieces on the board and performs on them an operation specified in the function that is passed to it
+;receives: output field 10(sp), board 6(sp), player 4(sp), function 2(sp)
+iterator:	mov #-1, -(sp)		;creates an iterator to count steps
+			mov 10(sp), -(sp)	;creates a copy of the board address
+			sub #2, (sp)		;sets the current address to the word just before the board for convenient iteration	
+			mov #0, -(sp)		;output field for the function that will be called	
+iterLoop:	add #2, 2(sp)		;increments the address in order for it to point to the next square
+			inc 4(sp)			;increments the number of the square (from 0 to 77)
+			cmp 4(sp), #100		;checks if there are any squares left
+			bge iterEnd			;if there are none, ends iteration					
+			cmp @2(sp), 12(sp)	;does the square contain the token of the player that was passed to the iterator?
+			bne iterLoop		;if it doesn't, just continue to iterate over squares
+			jsr pc, @10(sp) 	;goes to the passed function
+			cmp #-1, (sp)		;check the exit condition
+			bne iterLoop		;if it is not met, continue
+iterEnd:	mov (sp), 16(sp)	;puts the called function's output into the iterator's output field
+			add #6, sp			;deletes the count of steps and the copy of the board
+			rts pc 				;returns to the calling function
+
+;ITERATOR HELPER FUNCTIONS
+
+;;ADD_ONE
+;helper function that is passed to the iteratior in order to calculate the WP; increments the passed field
+addOne:	    inc 2(sp)
+			rts pc
+
+;;ANY_PIECE
+;helper function used to check if there are any pieces on the board; makes the iterator finish iterating
+anyPiece:	mov #-1, 2(sp)			
+			rts pc
+
+;;ANY_MOVE
+;function that is passed to the iterator in order to check if there are any possible moves for a given piece
+;receives: source 6(sp), current address on board 4(sp), output 2(sp)
+;if a piece can move right or left, return -1, so that the iterator would stop
+anyMove:    mov 6(sp), -(sp)    ;copy source
+            mov 6(sp), -(sp)    ;copy address on board
+            mov @(sp), -(sp)    ;copy player
+callCMR:    jsr pc, canMoveR    ;check if the player can move to the right
+            cmp 4(sp), #-1      ;check what was returned from the function
+            bne am1             ;if it is not -1 (the piece can move), stop the iteration
+            add #6, sp          ;otherwise adjust the stack
+            mov 6(sp), -(sp)    ;copy source
+            mov 6(sp), -(sp)    ;copy address on board
+            mov @(sp), -(sp)    ;copy player
+            jsr pc, canMoveL    ;check if the piece can move to the left
+            cmp 4(sp), #-1      ;if it is not -1, the piece can move
+            bne am1             ;stop the iteration in that case
+            add #6, sp          ;otherwise adjust the stack
+            rts pc              ;if the piece cannot move, exit without changing the output field
+am1:        mov #-1, 10(sp)     ;pass in the output field the number that will stop the iteration
+            add #6, sp          ;adjust the stack
+            rts pc              ;exit
+
+;CHECK_WIN
+;receives: player by value 2(sp), board by address 4(sp), output field 6(sp)
+;returns 1 if the player has won, -1 otherwise
+;if the player has pieces left, but the opponent doesn't, the player has won
+;if both have no moves, and the player has more pieces, the player has won
+;reminder: endCond receives: 6(sp) steps, 4(sp) board by address, 2(sp) current player
+;and the following output fields: 12(sp) stop (1)/ continue (0) / pass (2), 10(sp) WP in case of a stop
+
+checkWin:	mov #0, -(sp)		;pass the output field to endCond
+			mov #0, -(sp)		;pass another output field to endCond
+			mov #1, -(sp)		;pass 1 as a number of steps to endCond (checkWin doesn't care if the steps are finished)
+			mov 12(sp), -(sp)	;pass board to endCond
+			mov 12(sp), -(sp)	;pass player to endCond
+			jsr pc, endCond 	;go to endCond
+			cmp 10(sp), #1		;check the stop vs continue output field
+			bne chWNeg			;if it is not 1, we the player has not won
+			cmp 6(sp), #20 		;otherwise check the score output field
+			bne chWNeg			;if it is not 20, the current player has not won
+			add #10, sp 		;adjust the stack
+			mov #1, 6(sp)		;return 1 in the output field
+			rts pc 				;return to the calling function
+chWNeg:		add #10, sp  		;adjust the stack
+			mov #-1, 6(sp)		;return -1 in the output field
+			rts pc 				;return to the calling function
+
+
+
+;CAN_MOVE_R
+;function checking if the piece can move to the right
+;player 2(sp), board 4(sp), source 6(sp)
+canMoveR:   mov #0, -(sp)       ;first vs second check counter (just move vs eat)
+            cmp 4(sp), #1       ;row step
+            beq wRStep 			;check who's the player
+            mov #10, -(sp)      ;row step for Player 1
+            br wRStep+4 		;start to check if the move is possible
+wRStep:     mov #-10, -(sp) 	;row step for Player2
+		    add #1, 2(sp) 		;adjust the square ID
+            mov 6(sp), -(sp)    ;copy player
+            mov 14(sp), -(sp)   ;copy square ID
+            jsr pc, testEdge 	;check if we won't cross the edge of the board
+            tst (sp)+ 			;adjust the stack
+            cmp (sp)+, #1       ;check border
+            bne cmrRetN         ;border check failed => return -1
+riEdge:     mov 12(sp), -(sp)   ;check right edge (next 3 lines)
+            bic #177770, (sp)  
+            cmp (sp)+, #7
+            beq cmrRetN         ;return -1 if the right edge condition is not fulfilled
+            mov (sp), -(sp)     ;add row step for the current player
+            inc (sp)            ;add step to the right
+isEmptyR:   mov 12(sp), -(sp)   ;move board to stack
+            asl 2(sp)           ;multiply possible dest by two
+            add 2(sp), (sp)     ;get the address to check
+            tst @(sp) 			;check the contents of the square
+            beq retMoveR        ;if it is 0, return dest
+            cmp @(sp), 12(sp)   ;compare dest contents with player
+            beq cmrRetN-4        ;if the player's piece is there, return -1
+            cmp 6(sp), #2       ;otherwise check iteration number
+            beq cmrRetN-4       ;if it is the second iteration, return -1
+            asr 2(sp) 			;set the new source
+            mov (sp), 14(sp)    ;set new board
+            add 2(sp), 16(sp)   ;set new source
+            add #4, sp 			;adjust the stack
+		    br wRStep+4 		;check if we can eat the opponent's piece
+		    add #4, sp 			;adjust the stack
+cmrRetN:    add #4, sp 			;adjust the stack
+            mov #-1, 6(sp) 		;return -1
+            rts pc 				;return to the calling function
+retMoveR:   asr 2(sp) 			;set the destination
+            add 2(sp), 16(sp)   ;return move
+            add #10, sp         ;adjust stack 
+            rts pc 				;return to the calling function
+
+
+
+;"minOrMax" function, decides whether we need to calculate min or max WP in a given turn
+;first parameter[4(sp)] - current player
+;second parameter[2(sp)] - player we are checking for
+
+minOrMax:		mov @2(sp),-(sp)			;fetching second parameter
+				cmp (sp),6(sp)				;comparing player's colors
+				beq return-6 					;if colors are equal - returning "1"(means max)
+
+				mov #-1,r4					;in case they are different - returning "-1"(means min)
+				jmp return 					;after assigning right value to the r4 going to clear stack and return from subroutine
+
+				mov #1,r4  					;assigning "1"(means max) to the r4
+				jmp return 					;going to clear the stack and return from subroutine
+
+return:			tst (sp)+					;clearing the stack
+				rts pc						;returning from the subroutine
+
+
+
+
+;Gives any field which contains piece of a given player
+;Output field 6(sp)
+;Board 4(sp)
+;Current player 2(sp)
+getAnyF:	mov #-1, -(sp)		;creates an iterator to count steps
+			mov 6(sp), -(sp)	;creates a copy of the board address
+			sub #2, (sp)		;sets the current address to the word just before the board for convenient iteration
+
+			add #2, (sp)		;increments the address in order for it to point to the next square
+			inc 2(sp)			;increments the number of the square (from 0 to 77)
+			cmp 2(sp), #100		;checks if there are any squares left
+			bge retFGAF			;if there are none, ends iteration					
+			cmp @(sp), 6(sp)	;does the square contain the token of the player that was passed to the iterator?
+			bne getAnyF+14		;if it doesn't, just continue to iterate over squares
+
+			mov 2(sp),12(sp)	;passing field index into output	
+
+retFGAF:	add #4,sp 			;clearing stack
+			rts pc 				;returns to the calling function
+
+
+;SWITCH_PL
+;function used to switch from Player 1 to Player 2 inside a function
+;when given 1, returns 2 in the same field 2(sp), and vice versa
+switchPl:   cmp 2(sp), #1 			;checking if passed player is white
+            beq .+12 				;if yes, change him into black
+            mov #1, 2(sp) 			;otherwise change him into white
+            rts pc 					;return from subroutine
+	        mov #2, 2(sp) 			;change palyer into black
+            rts pc 					;return from subroutine
+			
+			
+			
+
+Board:
+.word 0,0,0,0,0,0,0,0
+.word 0,0,2,0,2,0,0,0
+.word 0,0,0,1,0,0,0,0
+.word 0,0,0,0,2,0,0,0
+.word 0,0,0,1,0,0,0,0
+.word 0,0,1,0,1,0,0,0
+.word 0,0,0,0,0,2,0,0
+.word 0,0,0,0,0,0,0,0
+Player:.word 1
+Steps:.word 3
+
+orBoard:
+.word 0,2,0,2,0,2,0,2
+.word 2,0,2,0,2,0,2,0
+.word 0,2,0,2,0,2,0,2	
+.word 0,0,0,0,0,0,0,0
+.word 0,0,0,0,0,0,0,0
+.word 1,0,1,0,1,0,1,0
+.word 0,1,0,1,0,1,0,1
+.word 1,0,1,0,1,0,1,0
+
+temBoa:
+.word 0,2,0,2,0,2,0,2
+.word 2,0,2,0,2,0,2,0
+.word 0,2,0,2,0,2,0,2
+.word 0,0,0,0,0,0,0,0
+.word 0,0,0,0,0,0,0,0
+.word 1,0,1,0,1,0,1,0
+.word 0,1,0,1,0,1,0,1
+.word 1,0,1,0,1,0,1,0
+
+;output
+SrcPos: .blkw 1
+DstPos: .blkw 1
+WinParam: .blkw 1
+	
